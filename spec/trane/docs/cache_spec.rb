@@ -108,12 +108,12 @@ RSpec.describe Trane::Docs::Cache do
         iterations.times do
           json = described_class.json
           html = described_class.html
-          pairs << [json, html] if json && html
+          pairs << [ json, html ] if json && html
         end
       end
 
       2.times { start << :go }
-      [writer, reader].each(&:join)
+      [ writer, reader ].each(&:join)
 
       expect(pairs).not_to be_empty
       torn = pairs.reject do |json, html|

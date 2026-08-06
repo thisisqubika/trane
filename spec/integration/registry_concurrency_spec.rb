@@ -34,7 +34,7 @@ RSpec.describe "Registry concurrent reads during reload", type: :integration do
       end
     end
 
-    (readers + [reloader]).each(&:join)
+    (readers + [ reloader ]).each(&:join)
     expect(errors).to be_empty
   end
 end

@@ -40,9 +40,9 @@ RSpec.describe "Registry#errors_by_name" do
         b.register_error(Trane::ErrorDefinition.new(key: "MyApp::Admin::UserNotFound",  status_code: 404, description: "B"))
       end
     }.to raise_error(Trane::Error) do |error|
-      expect(error.message).to match(/short-name collision on "UserNotFound"/)
-      expect(error.message).to match(/MyApp::Admin::UserNotFound, MyApp::Errors::UserNotFound/)
-      expect(error.message).to match(/key :"MyApp::Admin::UserNotFound"/)
+      expect(error.message).to include('short-name collision on "UserNotFound"')
+      expect(error.message).to include('MyApp::Admin::UserNotFound, MyApp::Errors::UserNotFound')
+      expect(error.message).to include('key :"MyApp::Admin::UserNotFound"')
     end
   end
 

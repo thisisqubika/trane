@@ -109,73 +109,73 @@ RSpec.describe Trane::Types do
 
     it "raises when type is :array" do
       expect {
-        described_class.validate_enum!(name: :x, type: :array, enum: ["a"])
+        described_class.validate_enum!(name: :x, type: :array, enum: [ "a" ])
       }.to raise_error(ArgumentError, /scalar primitive/)
     end
 
     it "raises when type is :object" do
       expect {
-        described_class.validate_enum!(name: :x, type: :object, enum: ["a"])
+        described_class.validate_enum!(name: :x, type: :object, enum: [ "a" ])
       }.to raise_error(ArgumentError, /scalar primitive/)
     end
 
     it "raises when type is a representation reference" do
       expect {
-        described_class.validate_enum!(name: :x, type: :user, enum: ["a"])
+        described_class.validate_enum!(name: :x, type: :user, enum: [ "a" ])
       }.to raise_error(ArgumentError, /scalar primitive/)
     end
 
     it "raises when an enum value type mismatches :integer" do
       expect {
-        described_class.validate_enum!(name: :x, type: :integer, enum: [1, 1.0])
+        described_class.validate_enum!(name: :x, type: :integer, enum: [ 1, 1.0 ])
       }.to raise_error(ArgumentError, /1\.0 \(Float\)/)
     end
 
     it "does not raise for valid :string enum" do
       expect {
-        described_class.validate_enum!(name: :x, type: :string, enum: ["a", "b"])
+        described_class.validate_enum!(name: :x, type: :string, enum: [ "a", "b" ])
       }.not_to raise_error
     end
 
     it "does not raise for valid :integer enum" do
       expect {
-        described_class.validate_enum!(name: :x, type: :integer, enum: [1, 2, 3])
+        described_class.validate_enum!(name: :x, type: :integer, enum: [ 1, 2, 3 ])
       }.not_to raise_error
     end
 
     it "does not raise for valid :float enum" do
       expect {
-        described_class.validate_enum!(name: :x, type: :float, enum: [1.0, 2.5])
+        described_class.validate_enum!(name: :x, type: :float, enum: [ 1.0, 2.5 ])
       }.not_to raise_error
     end
 
     it "does not raise for valid :boolean enum" do
       expect {
-        described_class.validate_enum!(name: :x, type: :boolean, enum: [true, false])
+        described_class.validate_enum!(name: :x, type: :boolean, enum: [ true, false ])
       }.not_to raise_error
     end
 
     it "does not raise for valid :date enum" do
       expect {
-        described_class.validate_enum!(name: :x, type: :date, enum: [Date.today])
+        described_class.validate_enum!(name: :x, type: :date, enum: [ Date.today ])
       }.not_to raise_error
     end
 
     it "raises when DateTime is passed for :date type" do
       expect {
-        described_class.validate_enum!(name: :x, type: :date, enum: [DateTime.now])
+        described_class.validate_enum!(name: :x, type: :date, enum: [ DateTime.now ])
       }.to raise_error(ArgumentError, /not coherent with type :date/)
     end
 
     it "does not raise for valid :datetime enum with DateTime" do
       expect {
-        described_class.validate_enum!(name: :x, type: :datetime, enum: [DateTime.now])
+        described_class.validate_enum!(name: :x, type: :datetime, enum: [ DateTime.now ])
       }.not_to raise_error
     end
 
     it "raises when plain Date is passed for :datetime type" do
       expect {
-        described_class.validate_enum!(name: :x, type: :datetime, enum: [Date.today])
+        described_class.validate_enum!(name: :x, type: :datetime, enum: [ Date.today ])
       }.to raise_error(ArgumentError, /not coherent with type :datetime/)
     end
   end

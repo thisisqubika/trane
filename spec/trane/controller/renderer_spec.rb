@@ -32,11 +32,11 @@ RSpec.describe Trane::Controller::Renderer do
   it "delegates to super for non-contract options hash" do
     klass = Class.new do
       def render(options = nil, _extra = {}, &_blk)
-        [:super_called, options]
+        [ :super_called, options ]
       end
       include Trane::Controller::Renderer
     end
-    expect(klass.new.render(plain: "hi")).to eq([:super_called, { plain: "hi" }])
+    expect(klass.new.render(plain: "hi")).to eq([ :super_called, { plain: "hi" } ])
   end
 
   it "raises ArgumentError when :callback (JSONP) is passed via extra_options" do

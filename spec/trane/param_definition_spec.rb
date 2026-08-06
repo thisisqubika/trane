@@ -42,8 +42,8 @@ RSpec.describe Trane::ParamDefinition do
   end
 
   it "accepts enum: and returns the frozen array" do
-    param = described_class.new(name: :x, type: :string, location: :query, enum: ["a"])
-    expect(param.enum).to eq(["a"])
+    param = described_class.new(name: :x, type: :string, location: :query, enum: [ "a" ])
+    expect(param.enum).to eq([ "a" ])
     expect(param.enum).to be_frozen
   end
 end

@@ -72,7 +72,7 @@ RSpec.describe Trane::Registry do
         end
       }.to raise_error("boom")
 
-      expect(described_class.operations.keys).to eq([:get_user])
+      expect(described_class.operations.keys).to eq([ :get_user ])
     end
 
     it "raises on nested replace!" do
@@ -201,7 +201,7 @@ RSpec.describe Trane::Registry do
       end
 
       expect(nested_error).to be_a(Trane::Error)
-      expect(nested_error.message).to match(/nested/)
+      expect(nested_error.message).to include('nested')
     end
 
     it "isolates the builder slot across independent threads" do

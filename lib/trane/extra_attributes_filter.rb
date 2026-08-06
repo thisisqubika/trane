@@ -29,10 +29,10 @@ module Trane
       return EMPTY if raw.nil?
 
       values = case raw
-               when Array then raw
-               when String then [raw]
-               else []
-               end
+      when Array then raw
+      when String then [ raw ]
+      else []
+      end
 
       return EMPTY if values.empty?
       Set.new(values.first(MAX_VALUES).map(&:to_s))

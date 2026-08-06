@@ -69,9 +69,9 @@ module Trane
         type         = field[:type] || "object"
         type_display = if field[:array_of]
                          "array of #{representation_link(field[:array_of])}"
-                       else
+        else
                          representation_link(type)
-                       end
+        end
         extra_badge  = field[:extra] ? ' <span class="badge extra">extra</span>' : ""
         format_badge = field[:format] ? " <span class=\"badge format\">#{h(field[:format])}</span>" : ""
         enum_display = field[:enum] ? %(<div class="enum-values">enum: #{field[:enum].map { |v| h(v) }.join(", ")}</div>) : ""
@@ -82,10 +82,10 @@ module Trane
 
         if include_required
           required_badge = case field[:required]
-                           when true  then '<span class="badge required">required</span>'
-                           when false then '<span class="badge optional">optional</span>'
-                           else "—"
-                           end
+          when true  then '<span class="badge required">required</span>'
+          when false then '<span class="badge optional">optional</span>'
+          else "—"
+          end
           buffer << %(<td>#{required_badge}</td>)
         end
 

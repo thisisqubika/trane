@@ -77,7 +77,7 @@ module Trane
 
         if error_def
           render(
-            json: { errors: [{ key: error_def.key.to_s, message: exception.message }] },
+            json: { errors: [ { key: error_def.key.to_s, message: exception.message } ] },
             status: error_def.status_code
           )
         elsif _trane_rails_reserved?(klass)
@@ -95,16 +95,16 @@ module Trane
         if defined?(Rails) && !Rails.env.production?
           render(
             json: {
-              errors: [{
+              errors: [ {
                 key: "InternalServerError",
                 message: "#{exception.class}: #{exception.message}"
-              }]
+              } ]
             },
             status: :internal_server_error
           )
         else
           render(
-            json: { errors: [{ key: "InternalServerError", message: "An unexpected error occurred" }] },
+            json: { errors: [ { key: "InternalServerError", message: "An unexpected error occurred" } ] },
             status: :internal_server_error
           )
         end

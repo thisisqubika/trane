@@ -4,6 +4,8 @@ require "spec_helper"
 
 RSpec.describe Trane::Registry::Instance do
   let(:instance) { described_class.new }
+  let(:fields_a) { make_fields([ :id, false ], [ :name, false ], [ :nickname, true ]) }
+  let(:fields_b) { make_fields([ :title, false ], [ :body, false ]) }
 
   def make_fields(*specs)
     specs.map do |name, extra|
@@ -11,8 +13,6 @@ RSpec.describe Trane::Registry::Instance do
     end.freeze
   end
 
-  let(:fields_a) { make_fields([:id, false], [:name, false], [:nickname, true]) }
-  let(:fields_b) { make_fields([:title, false], [:body, false]) }
 
   describe "#validator_field_names_for" do
     it "returns the same Array identity on repeated calls" do

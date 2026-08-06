@@ -217,7 +217,7 @@ module Trane
       # @param strict_mode [Symbol] :raise, :log, or :ignore
       # @return [Trane::Serializer]
       def compiled_serializer_for(response_def, strict_mode)
-        key = [response_def.object_id, strict_mode]
+        key = [ response_def.object_id, strict_mode ]
         @compiled_serializers[key] ||= Trane::Serializer.new(response_def, self, strict_mode: strict_mode)
       end
 

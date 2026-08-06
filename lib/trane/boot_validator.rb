@@ -38,7 +38,7 @@ module Trane
 
       def validate_field_references(field, registry, context:, path: [])
         errors = []
-        joined_path = (path + [field.name]).join(".")
+        joined_path = (path + [ field.name ]).join(".")
 
         if field.type && Types.representation_reference?(field.type)
           unless registry.representations.key?(field.type)
@@ -52,7 +52,7 @@ module Trane
           end
         end
 
-        child_path = path + [field.name]
+        child_path = path + [ field.name ]
         field.children.each do |child|
           errors.concat(validate_field_references(child, registry, context: context, path: child_path))
         end

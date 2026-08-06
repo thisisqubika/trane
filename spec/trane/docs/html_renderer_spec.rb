@@ -23,7 +23,7 @@ RSpec.describe Trane::Docs::HtmlRenderer do
               ]
             }
           ],
-          errors: ["UserNotFound"]
+          errors: [ "UserNotFound" ]
         },
         {
           id: "create_user",
@@ -39,7 +39,7 @@ RSpec.describe Trane::Docs::HtmlRenderer do
             ]
           },
           responses: [
-            { status: 201, fields: [{ name: "user", type: "user" }] }
+            { status: 201, fields: [ { name: "user", type: "user" } ] }
           ]
         }
       ],
@@ -155,6 +155,8 @@ RSpec.describe Trane::Docs::HtmlRenderer do
     end
 
     context "with enum values on fields and params" do
+      subject(:html_with_enum) { described_class.render(definition_with_enum) }
+
       let(:definition_with_enum) do
         definition.merge(
           operations: [
@@ -165,12 +167,12 @@ RSpec.describe Trane::Docs::HtmlRenderer do
               path: "/items",
               request: {
                 params: [
-                  { name: "sort", type: "string", location: "query", required: false, enum: ["asc", "desc"] },
+                  { name: "sort", type: "string", location: "query", required: false, enum: [ "asc", "desc" ] },
                   { name: "page", type: "integer", location: "query", required: false }
                 ]
               },
               responses: [
-                { status: 200, fields: [{ name: "items", type: "array", array_of: "item" }] }
+                { status: 200, fields: [ { name: "items", type: "array", array_of: "item" } ] }
               ]
             }
           ],
@@ -178,7 +180,7 @@ RSpec.describe Trane::Docs::HtmlRenderer do
             {
               name: "item",
               fields: [
-                { name: "status", type: "string", enum: ["active", "archived"] },
+                { name: "status", type: "string", enum: [ "active", "archived" ] },
                 { name: "count", type: "integer" }
               ]
             }
@@ -186,7 +188,6 @@ RSpec.describe Trane::Docs::HtmlRenderer do
         )
       end
 
-      subject(:html_with_enum) { described_class.render(definition_with_enum) }
 
       it "renders enum-values div for representation fields with enum" do
         expect(html_with_enum).to include('<div class="enum-values">enum: active, archived</div>')

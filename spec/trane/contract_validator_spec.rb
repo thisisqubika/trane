@@ -117,7 +117,7 @@ RSpec.describe Trane::ContractValidator do
     context "with :object type field (passthrough)" do
       it "does not recurse into :object fields without children" do
         resp = build_response(200) { field :data, type: :object }
-        result = { data: { unexpected_key: "ok", nested: [1, 2, 3] } }
+        result = { data: { unexpected_key: "ok", nested: [ 1, 2, 3 ] } }
 
         expect {
           described_class.validate_response!(resp, result, Trane::Registry, mode: :raise)

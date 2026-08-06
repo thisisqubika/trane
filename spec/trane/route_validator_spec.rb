@@ -21,7 +21,7 @@ RSpec.describe Trane::RouteValidator do
       end
 
       it "does not raise" do
-        routes = [build_route(path: "/users/:id", trane_operation: "get_user")]
+        routes = [ build_route(path: "/users/:id", trane_operation: "get_user") ]
 
         expect { described_class.validate!(routes, Trane::Registry) }.not_to raise_error
       end
@@ -37,7 +37,7 @@ RSpec.describe Trane::RouteValidator do
       end
 
       it "raises naming the verb, path, missing operation, and a Did-you-mean suggestion" do
-        routes = [build_route(verb: "GET", path: "/users/:id(.:format)", trane_operation: "get_usr")]
+        routes = [ build_route(verb: "GET", path: "/users/:id(.:format)", trane_operation: "get_usr") ]
 
         expect { described_class.validate!(routes, Trane::Registry) }
           .to raise_error(Trane::RoutingContractError) do |error|
@@ -50,13 +50,13 @@ RSpec.describe Trane::RouteValidator do
 
     context "when route defaults have no _trane_operation" do
       it "skips routes with a nil operation" do
-        routes = [build_route(trane_operation: nil)]
+        routes = [ build_route(trane_operation: nil) ]
 
         expect { described_class.validate!(routes, Trane::Registry) }.not_to raise_error
       end
 
       it "skips routes with a blank string operation" do
-        routes = [build_route(trane_operation: "")]
+        routes = [ build_route(trane_operation: "") ]
 
         expect { described_class.validate!(routes, Trane::Registry) }.not_to raise_error
       end
@@ -107,7 +107,7 @@ RSpec.describe Trane::RouteValidator do
 
     context "with an empty registry" do
       it "does not raise when no route declares an operation" do
-        routes = [build_route(trane_operation: nil)]
+        routes = [ build_route(trane_operation: nil) ]
 
         expect { described_class.validate!(routes, Trane::Registry) }.not_to raise_error
       end
@@ -123,7 +123,7 @@ RSpec.describe Trane::RouteValidator do
       end
 
       it "raises naming the collapsed verb, the path and the operation" do
-        routes = [build_route(verb: "PATCH|PUT", path: "/users/:id(.:format)", trane_operation: "update_user")]
+        routes = [ build_route(verb: "PATCH|PUT", path: "/users/:id(.:format)", trane_operation: "update_user") ]
 
         expect { described_class.validate!(routes, Trane::Registry) }
           .to raise_error(Trane::RoutingContractError) do |error|
@@ -144,7 +144,7 @@ RSpec.describe Trane::RouteValidator do
       end
 
       it "raises, reporting the route as ANY" do
-        routes = [build_route(verb: "", path: "/users/:id", trane_operation: "update_user")]
+        routes = [ build_route(verb: "", path: "/users/:id", trane_operation: "update_user") ]
 
         expect { described_class.validate!(routes, Trane::Registry) }
           .to raise_error(Trane::RoutingContractError) do |error|
@@ -163,7 +163,7 @@ RSpec.describe Trane::RouteValidator do
       end
 
       it "does not raise" do
-        routes = [build_route(verb: "PATCH", path: "/users/:id", trane_operation: "update_user")]
+        routes = [ build_route(verb: "PATCH", path: "/users/:id", trane_operation: "update_user") ]
 
         expect { described_class.validate!(routes, Trane::Registry) }.not_to raise_error
       end

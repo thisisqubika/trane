@@ -21,7 +21,7 @@ RSpec.describe "Trane::Testing.with_configuration", type: :integration do
     original_strict_mode = Trane.configuration.strict_mode
     original_frozen      = Trane.configuration.frozen_config?
 
-    Trane::Testing.with_configuration(strict_mode: :log) {}
+    Trane::Testing.with_configuration(strict_mode: :log) { }
 
     expect(Trane.configuration.strict_mode).to eq(original_strict_mode)
     expect(Trane.configuration.frozen_config?).to eq(original_frozen)
@@ -42,24 +42,24 @@ RSpec.describe "Trane::Testing.with_configuration", type: :integration do
   it "does not touch the route set" do
     expect(Rails.application).not_to receive(:reload_routes!)
 
-    Trane::Testing.with_configuration(strict_mode: :log) {}
+    Trane::Testing.with_configuration(strict_mode: :log) { }
   end
 
   it "restores contracts_paths, which reset! also clears" do
     config = Trane.configuration
     config.reset!
-    config._set_contracts_paths!(["app/custom_contracts"])
+    config._set_contracts_paths!([ "app/custom_contracts" ])
     config.freeze!
 
-    Trane::Testing.with_configuration(strict_mode: :log) {}
+    Trane::Testing.with_configuration(strict_mode: :log) { }
 
-    expect(config.contracts_paths).to eq(["app/custom_contracts"])
+    expect(config.contracts_paths).to eq([ "app/custom_contracts" ])
   end
 
   it "propagates the missing-Rails.application error without masking it" do
     allow(Rails).to receive(:application).and_return(nil)
 
-    expect { Trane::Testing.with_configuration(strict_mode: :log) {} }
+    expect { Trane::Testing.with_configuration(strict_mode: :log) { } }
       .to raise_error(Trane::Error, /requires Rails\.application/)
   end
 end

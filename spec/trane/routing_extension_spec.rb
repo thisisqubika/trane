@@ -32,7 +32,7 @@ RSpec.describe Trane::RoutingExtension do
   it "passes path and merges operation name into defaults" do
     router.match("/users", to: "users#index", via: :get, contract: { operation: :list_users })
 
-    expect(last_call[:args]).to eq(["/users"])
+    expect(last_call[:args]).to eq([ "/users" ])
     expect(last_call[:kwargs][:defaults]).to include(_trane_operation: "list_users")
   end
 
@@ -93,7 +93,7 @@ RSpec.describe Trane::RoutingExtension do
   it "forwards routes without contract: unchanged (no defaults injected)" do
     router.match("/up", to: "rails/health#show", via: :get)
 
-    expect(last_call[:args]).to eq(["/up"])
+    expect(last_call[:args]).to eq([ "/up" ])
     expect(last_call[:kwargs]).not_to have_key(:defaults)
     expect(last_call[:kwargs]).not_to have_key(:contract)
   end
@@ -113,9 +113,9 @@ RSpec.describe Trane::RoutingExtension do
     it "injects _trane_operation into the positional options hash" do
       router.match("/users", { to: "users#index", via: :get, contract: { operation: :list_users } })
 
-      expect(last_call[:args]).to eq(["/users", { to: "users#index", via: :get,
+      expect(last_call[:args]).to eq([ "/users", { to: "users#index", via: :get,
                                                    defaults: { _trane_operation: "list_users" },
-                                                   as: "list_users" }])
+                                                   as: "list_users" } ])
     end
 
     it "strips contract: from the positional options hash forwarded to super" do
@@ -144,7 +144,7 @@ RSpec.describe Trane::RoutingExtension do
     it "passes through without modification when no contract: key present" do
       router.match("/up", { to: "rails/health#show", via: :get })
 
-      expect(last_call[:args]).to eq(["/up", { to: "rails/health#show", via: :get }])
+      expect(last_call[:args]).to eq([ "/up", { to: "rails/health#show", via: :get } ])
     end
   end
 
@@ -171,7 +171,7 @@ RSpec.describe Trane::RoutingExtension do
       }.to raise_error(Trane::RoutingContractError, /requires a non-empty :operation/)
     end
 
-    it "raises when contract: { operation: \"   \" } (whitespace only)" do
+    it "raises when contract: { operation: } (whitespace only)" do
       expect {
         router.match("/users", to: "users#index", via: :get, contract: { operation: "   " })
       }.to raise_error(Trane::RoutingContractError, /requires a non-empty :operation/)

@@ -34,7 +34,7 @@ RSpec.describe "contracts_paths multi-path loading", type: :integration do
 
       begin
         Trane.configuration.instance_variable_set(:@frozen, false)
-        Trane.configuration.instance_variable_set(:@contracts_paths, [tmpdir])
+        Trane.configuration.instance_variable_set(:@contracts_paths, [ tmpdir ])
         Trane.configuration.instance_variable_set(:@frozen, true)
 
         Rails.application.reloader.prepare!
@@ -83,7 +83,7 @@ RSpec.describe "contracts_paths multi-path loading", type: :integration do
 
         begin
           Trane.configuration.instance_variable_set(:@frozen, false)
-          Trane.configuration.instance_variable_set(:@contracts_paths, [base1, base2])
+          Trane.configuration.instance_variable_set(:@contracts_paths, [ base1, base2 ])
           Trane.configuration.instance_variable_set(:@frozen, true)
 
           expect { Rails.application.reloader.prepare! }.not_to raise_error
