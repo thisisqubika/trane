@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gem:
+    name: Gem (Rails ${{ matrix.rails }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rails:
+          - rails_7_2
+          - rails_8_0
+          - rails_8_1
+    env:
+      BUNDLE_GEMFILE: ${{ github.workspace }}/trane/gemfiles/${{ matrix.rails }}.gemfile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.1'
+          bundler-cache: true
+      - name: Run gem specs
+        run: bundle exec rspec
