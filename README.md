@@ -1795,6 +1795,14 @@ bundle install
 bundle exec rspec
 ```
 
+### Linting
+
+```bash
+bundle exec rubocop
+```
+
+`bundle exec rake` (no args) runs both `rspec` and `rubocop` — the same two checks CI runs.
+
 ### Test structure
 
 ```
