@@ -163,15 +163,15 @@ RSpec.describe Trane::Registry do
 
   describe "concurrent CoW register_error" do
     it "serializes concurrent CoW register_error calls without losing registrations" do
-      Trane::Registry.reset!
+      described_class.reset!
 
       thread_count = 25
       start_signal = Queue.new
 
-      threads = thread_count.times.map do |i|
+      threads = Array.new(thread_count) do |i|
         Thread.new do
           start_signal.pop
-          Trane::Registry.register_error(
+          described_class.register_error(
             Trane::ErrorDefinition.new(
               key: "MyApp::Errors::Concurrent#{i}",
               status_code: 500,
@@ -184,8 +184,8 @@ RSpec.describe Trane::Registry do
       thread_count.times { start_signal << :go }
       threads.each(&:join)
 
-      expect(Trane::Registry.errors.size).to eq(thread_count)
-      expect(Trane::Registry.errors_by_name.size).to eq(thread_count * 2)
+      expect(described_class.errors.size).to eq(thread_count)
+      expect(described_class.errors_by_name.size).to eq(thread_count * 2)
     end
   end
 

@@ -12,7 +12,7 @@ RSpec.describe "Registry concurrent reads during reload", type: :integration do
     end
 
     errors = []
-    readers = 4.times.map do
+    readers = Array.new(4) do
       Thread.new do
         500.times do
           op = Trane::Registry.operations[:concurrent_op]

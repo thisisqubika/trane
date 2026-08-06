@@ -13,8 +13,8 @@ RSpec.describe "contract: keyword integration", type: :integration do
 
   it "all three dummy routes have their operation names in defaults" do
     operation_names = Rails.application.routes.routes
-      .map { |r| r.defaults[:_trane_operation] }
-      .compact
+      .filter_map { |r| r.defaults[:_trane_operation] }
+
 
     expect(operation_names).to include("list_users", "create_user", "get_user")
   end

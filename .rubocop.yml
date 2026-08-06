@@ -24,3 +24,13 @@ AllCops:
 # cop; re-enable it since we explicitly depend on rubocop-performance.
 Performance:
   Enabled: true
+
+# These two files memoize by recomputing-and-discarding-the-loser on a race,
+# the same atomic-swap idiom Registry uses for its frozen snapshots — never
+# torn state, at worst duplicate (harmless, idempotent) work. See the
+# Cache module's own comment for the full reasoning. A mutex here would
+# undo a deliberate design choice, not fix a bug.
+ThreadSafety/ClassInstanceVariable:
+  Exclude:
+    - "lib/trane/docs/cache.rb"
+    - "lib/trane/controller/error_handler.rb"

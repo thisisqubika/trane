@@ -249,7 +249,7 @@ RSpec.describe "Operation DSL" do
       end
       op = Trane::Registry.operations[:test_op_internal_required]
       param = op.request.params.first
-      expect(param.required).to eq(true)
+      expect(param.required).to be(true)
     end
 
     describe "query validation" do

@@ -180,7 +180,7 @@ RSpec.describe Trane::BootValidator do
           end
         end
 
-        expect { Trane::BootValidator.validate!(Trane::Registry) }.not_to raise_error
+        expect { described_class.validate!(Trane::Registry) }.not_to raise_error
       end
     end
 
@@ -193,7 +193,7 @@ RSpec.describe Trane::BootValidator do
         end
 
         expect {
-          Trane::BootValidator.validate!(Trane::Registry)
+          described_class.validate!(Trane::Registry)
         }.to raise_error(Trane::Error, /representation :any.*does not exist/)
       end
 
@@ -205,7 +205,7 @@ RSpec.describe Trane::BootValidator do
         end
 
         expect {
-          Trane::BootValidator.validate!(Trane::Registry)
+          described_class.validate!(Trane::Registry)
         }.to raise_error(Trane::Error, /representation :dynamic.*does not exist/)
       end
     end

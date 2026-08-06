@@ -76,29 +76,29 @@ RSpec.describe Trane::Configuration do
   end
 
   describe "freeze behavior" do
-    before { Trane::Configuration.instance.reset! }
+    before { described_class.instance.reset! }
 
     it "allows writes before freeze!" do
-      expect { Trane::Configuration.instance.strict_mode = :log }.not_to raise_error
+      expect { described_class.instance.strict_mode = :log }.not_to raise_error
     end
 
     it "raises FrozenError on strict_mode= after freeze!" do
-      Trane::Configuration.instance.freeze!
-      expect { Trane::Configuration.instance.strict_mode = :raise }
+      described_class.instance.freeze!
+      expect { described_class.instance.strict_mode = :raise }
         .to raise_error(FrozenError, /Trane::Configuration is frozen/)
     end
 
     it "frozen_config? returns true after freeze!" do
-      expect(Trane::Configuration.instance.frozen_config?).to be(false)
-      Trane::Configuration.instance.freeze!
-      expect(Trane::Configuration.instance.frozen_config?).to be(true)
+      expect(described_class.instance.frozen_config?).to be(false)
+      described_class.instance.freeze!
+      expect(described_class.instance.frozen_config?).to be(true)
     end
 
     it "reset! clears the frozen flag and re-enables writes" do
-      Trane::Configuration.instance.freeze!
-      Trane::Configuration.instance.reset!
-      expect(Trane::Configuration.instance.frozen_config?).to be(false)
-      expect { Trane::Configuration.instance.strict_mode = :log }.not_to raise_error
+      described_class.instance.freeze!
+      described_class.instance.reset!
+      expect(described_class.instance.frozen_config?).to be(false)
+      expect { described_class.instance.strict_mode = :log }.not_to raise_error
     end
   end
 end
