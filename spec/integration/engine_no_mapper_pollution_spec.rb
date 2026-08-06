@@ -18,8 +18,8 @@ RSpec.describe "Trane Engine prepends Trane::RoutingExtension onto ActionDispatc
 
   it "makes the contract: keyword functional in any routes.draw block" do
     operation_names = Rails.application.routes.routes
-      .map { |r| r.defaults[:_trane_operation] }
-      .compact
+      .filter_map { |r| r.defaults[:_trane_operation] }
+
     expect(operation_names).to include("list_users", "get_user", "create_user")
   end
 

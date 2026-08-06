@@ -6,30 +6,10 @@
 # Note that changes in the inspected code, or installation of new
 # versions of RuboCop, may require this file to be generated again.
 
-# Offense count: 2
-# This cop supports unsafe autocorrection (--autocorrect-all).
-Performance/MapCompact:
-  Exclude:
-    - 'spec/integration/engine_no_mapper_pollution_spec.rb'
-    - 'spec/integration/routing_helper_lifecycle_spec.rb'
-
-# Offense count: 2
-# This cop supports unsafe autocorrection (--autocorrect-all).
-Performance/TimesMap:
-  Exclude:
-    - 'spec/integration/registry_concurrency_spec.rb'
-    - 'spec/trane/registry_spec.rb'
-
 # Offense count: 1
 RSpec/AnyInstance:
   Exclude:
     - 'spec/integration/engine_ignore_autoload_paths_spec.rb'
-
-# Offense count: 1
-# This cop supports unsafe autocorrection (--autocorrect-all).
-RSpec/BeEq:
-  Exclude:
-    - 'spec/trane/operation_definition_spec.rb'
 
 # Offense count: 7
 # Configuration parameters: Prefixes, AllowedPatterns.
@@ -46,17 +26,6 @@ RSpec/ContextWording:
 # Configuration parameters: IgnoredMetadata.
 RSpec/DescribeClass:
   Enabled: false
-
-# Offense count: 29
-# This cop supports unsafe autocorrection (--autocorrect-all).
-# Configuration parameters: SkipBlocks, EnforcedStyle, OnlyStaticConstants.
-# SupportedStyles: described_class, explicit
-RSpec/DescribedClass:
-  Exclude:
-    - 'spec/trane/boot_validator_spec.rb'
-    - 'spec/trane/configuration_spec.rb'
-    - 'spec/trane/controller/error_handler_spec.rb'
-    - 'spec/trane/registry_spec.rb'
 
 # Offense count: 107
 # Configuration parameters: CountAsOne.
@@ -111,12 +80,6 @@ RSpec/VerifiedDoubles:
     - 'spec/trane/docs/cache_spec.rb'
     - 'spec/trane/docs/service_definition_spec.rb'
 
-# Offense count: 10
-ThreadSafety/ClassInstanceVariable:
-  Exclude:
-    - 'lib/trane.rb'
-    - 'lib/trane/controller/error_handler.rb'
-    - 'lib/trane/docs/cache.rb'
 
 # Offense count: 9
 ThreadSafety/NewThread:

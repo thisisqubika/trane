@@ -32,6 +32,9 @@ require_relative "trane/routing_extension"
 module Trane
   THREAD_LOCAL_HOOKS_KEY = :trane_explicit_hooks
   CLAIM_MUTEX = Mutex.new
+  DEFAULT_HOOKS_MUTEX = Mutex.new
+  HOOKS_REGISTRY_MUTEX = Mutex.new
+  WARN_FALLBACK_MUTEX = Mutex.new
 
   def self.configure
     yield configuration
@@ -68,10 +71,12 @@ module Trane
   # This is the hooks object used by the first Rails application booted in
   # the process so that pre-boot DSL registrations are preserved.
   def self.default_hooks
-    @default_hooks ||= ApplicationHooks.new(
-      registry:      Registry::Instance.new,
-      configuration: Configuration.new
-    )
+    DEFAULT_HOOKS_MUTEX.synchronize do
+      @default_hooks ||= ApplicationHooks.new(
+        registry:      Registry::Instance.new,
+        configuration: Configuration.new
+      )
+    end
   end
 
   # Emits a one-time warning when Trane.current_hooks falls back to
@@ -79,8 +84,13 @@ module Trane
   # the Engine initializer did not run for that app — a real bug surface
   # worth surfacing without breaking single-app behaviour.
   def self.warn_default_hooks_fallback
-    return if @warned_default_fallback
-    @warned_default_fallback = true
+    first_warning = WARN_FALLBACK_MUTEX.synchronize do
+      already_warned = @warned_default_fallback
+      @warned_default_fallback = true
+      !already_warned
+    end
+    return unless first_warning
+
     msg = "[Trane] current_hooks falling back to default_hooks for #{Rails.application.class.name}; " \
           "the Engine's trane.install_application_hooks initializer may not have run for this app."
     if defined?(Rails.logger) && Rails.logger
@@ -96,7 +106,7 @@ module Trane
   # directly. Isolated from Rails::Railtie::Configuration's shared @@options
   # so anonymous Rails::Application subclasses get truly separate hooks.
   def self.hooks_registry
-    @hooks_registry ||= {}
+    HOOKS_REGISTRY_MUTEX.synchronize { @hooks_registry ||= {} }
   end
 
   # Installs ApplicationHooks for a given Rails application instance,
