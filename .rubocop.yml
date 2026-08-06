@@ -19,3 +19,8 @@ AllCops:
     - "spec/integration/dummy/log/**/*"
     - "spec/integration/dummy/tmp/**/*"
     - "vendor/**/*"
+
+# rubocop-rails-omakase disables the whole Performance department except one
+# cop; re-enable it since we explicitly depend on rubocop-performance.
+Performance:
+  Enabled: true
