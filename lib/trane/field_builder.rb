@@ -47,11 +47,11 @@ module Trane
       Trane::Types.validate_enum!(name: name, type: resolved_type, enum: enum) if enum
 
       children = if block_given?
-                   child_builder = child_builder_class.new
-                   child_builder.instance_eval(&block)
-                   child_builder.fields
+        child_builder = child_builder_class.new
+        child_builder.instance_eval(&block)
+        child_builder.fields
       else
-                   []
+        []
       end
 
       FieldNode.new(
