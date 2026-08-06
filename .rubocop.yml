@@ -1,0 +1,19 @@
+require:
+  - rubocop-performance
+  - rubocop-rspec
+  - rubocop-packaging
+  - rubocop-rake
+  - rubocop-thread_safety
+
+inherit_gem:
+  rubocop-rails-omakase: rubocop.yml
+
+AllCops:
+  TargetRubyVersion: 3.2
+  NewCops: enable
+  Exclude:
+    - "gemfiles/**/*"
+    - "spec/integration/dummy/db/**/*"
+    - "spec/integration/dummy/log/**/*"
+    - "spec/integration/dummy/tmp/**/*"
+    - "vendor/**/*"
