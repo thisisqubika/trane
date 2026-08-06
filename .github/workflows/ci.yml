@@ -26,3 +26,15 @@ jobs:
           bundler-cache: true
       - name: Run gem specs
         run: bundle exec rspec
+
+  lint:
+    name: Lint (RuboCop)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.1'
+          bundler-cache: true
+      - name: Run RuboCop
+        run: bundle exec rubocop
