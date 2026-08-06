@@ -201,7 +201,7 @@ RSpec.describe Trane::Registry do
       end
 
       expect(nested_error).to be_a(Trane::Error)
-      expect(nested_error.message).to include('nested')
+      expect(nested_error.message).to include("nested")
     end
 
     it "isolates the builder slot across independent threads" do

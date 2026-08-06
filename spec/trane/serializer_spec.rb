@@ -197,7 +197,7 @@ RSpec.describe Trane::Serializer do
 
       result = serializer.serialize({ user: user })
       expect(result[:user][:birthday]).to eq("1990-05-15")
-      expect(result[:user][:created_at]).to include('2026-04-01')
+      expect(result[:user][:created_at]).to include("2026-04-01")
     end
 
     it "does not apply format when value doesn't respond to iso8601" do
