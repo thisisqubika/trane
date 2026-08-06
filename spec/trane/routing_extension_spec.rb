@@ -171,7 +171,7 @@ RSpec.describe Trane::RoutingExtension do
       }.to raise_error(Trane::RoutingContractError, /requires a non-empty :operation/)
     end
 
-    it "raises when contract: { operation: } (whitespace only)" do
+    it "raises when contract: { operation: } is a whitespace-only string" do
       expect {
         router.match("/users", to: "users#index", via: :get, contract: { operation: "   " })
       }.to raise_error(Trane::RoutingContractError, /requires a non-empty :operation/)
