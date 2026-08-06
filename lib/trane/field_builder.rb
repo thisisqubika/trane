@@ -50,9 +50,9 @@ module Trane
                    child_builder = child_builder_class.new
                    child_builder.instance_eval(&block)
                    child_builder.fields
-                 else
+      else
                    []
-                 end
+      end
 
       FieldNode.new(
         name: name,

@@ -4,8 +4,10 @@ require_relative "integration_helper"
 
 RSpec.describe "Multi-application registry isolation", type: :integration do
   let(:created_apps) { [] }
+  let(:app1) { build_isolated_app("app1") }
+  let(:app2) { build_isolated_app("app2") }
 
-  after(:each) do
+  after do
     created_apps.each { |app| Trane.uninstall_hooks_for(app) }
   end
 
@@ -23,8 +25,6 @@ RSpec.describe "Multi-application registry isolation", type: :integration do
     klass
   end
 
-  let(:app1) { build_isolated_app("app1") }
-  let(:app2) { build_isolated_app("app2") }
 
   it "Scenario 1: registrations in one app do not leak into another" do
     Trane.with_application(app1) do
@@ -96,7 +96,7 @@ RSpec.describe "Multi-application registry isolation", type: :integration do
     dummy_ops_before = Trane.registry.operations.keys
 
     Trane.with_application(app1) do
-      Trane.operation(:isolated_op) { response(200) {} }
+      Trane.operation(:isolated_op) { response(200) { } }
     end
 
     dummy_ops_after = Trane.registry.operations.keys

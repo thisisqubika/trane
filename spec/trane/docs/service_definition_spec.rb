@@ -115,7 +115,7 @@ RSpec.describe Trane::Docs::ServiceDefinition do
 
     it "includes error keys on operations" do
       op = definition[:operations].find { |o| o[:id] == "get_user" }
-      expect(op[:errors]).to eq(["UserNotFound"])
+      expect(op[:errors]).to eq([ "UserNotFound" ])
     end
 
     it "includes all representations" do
@@ -192,16 +192,18 @@ RSpec.describe Trane::Docs::ServiceDefinition do
     end
 
     context "enum: support" do
+      subject(:extended_definition) { described_class.generate(extended_routes, service_name: "testapi") }
+
       before do
         Trane.representation :product do
-          field :status, type: :string, enum: ["active", "archived"]
+          field :status, type: :string, enum: [ "active", "archived" ]
         end
 
         Trane.operation :list_products do
           summary "List products"
 
           request do
-            query :sort, type: :string, enum: ["asc", "desc"]
+            query :sort, type: :string, enum: [ "asc", "desc" ]
           end
 
           response 200 do
@@ -211,15 +213,14 @@ RSpec.describe Trane::Docs::ServiceDefinition do
       end
 
       let(:extended_routes) do
-        mock_routes + [mock_route("GET", "/products", "list_products")]
+        mock_routes + [ mock_route("GET", "/products", "list_products") ]
       end
 
-      subject(:extended_definition) { described_class.generate(extended_routes, service_name: "testapi") }
 
       it "emits enum for representation fields" do
         product_rep = extended_definition[:representations].find { |r| r[:name] == "product" }
         status_field = product_rep[:fields].find { |f| f[:name] == "status" }
-        expect(status_field[:enum]).to eq(["active", "archived"])
+        expect(status_field[:enum]).to eq([ "active", "archived" ])
       end
 
       it "does not emit enum key for fields without enum" do
@@ -231,22 +232,22 @@ RSpec.describe Trane::Docs::ServiceDefinition do
       it "emits enum for query params" do
         op = extended_definition[:operations].find { |o| o[:id] == "list_products" }
         sort_param = op[:request][:params].find { |p| p[:name] == "sort" }
-        expect(sort_param[:enum]).to eq(["asc", "desc"])
+        expect(sort_param[:enum]).to eq([ "asc", "desc" ])
       end
 
       it "serializes Date enum values to ISO 8601 strings" do
         Trane.representation :dated_item do
-          field :expiry, type: :date, enum: [Date.new(2026, 1, 1)]
+          field :expiry, type: :date, enum: [ Date.new(2026, 1, 1) ]
         end
         Trane.operation :list_dated_items do
           response 200 do
             field :items, of: :dated_item
           end
         end
-        defn = described_class.generate(mock_routes + [mock_route("GET", "/dated_items", "list_dated_items")], service_name: "testapi")
+        defn = described_class.generate(mock_routes + [ mock_route("GET", "/dated_items", "list_dated_items") ], service_name: "testapi")
         dated_rep = defn[:representations].find { |r| r[:name] == "dated_item" }
         expiry_field = dated_rep[:fields].find { |f| f[:name] == "expiry" }
-        expect(expiry_field[:enum]).to eq(["2026-01-01"])
+        expect(expiry_field[:enum]).to eq([ "2026-01-01" ])
       end
     end
   end
@@ -262,7 +263,7 @@ RSpec.describe Trane::Docs::ServiceDefinition do
     end
 
     it "returns the verb string when route.verb is a String" do
-      routes = [mock_route("GET", "/users/:id", "get_user")]
+      routes = [ mock_route("GET", "/users/:id", "get_user") ]
       op = described_class.generate(routes, service_name: "testapi")[:operations].find { |o| o[:id] == "get_user" }
       expect(op[:method]).to eq("GET")
     end
@@ -271,19 +272,19 @@ RSpec.describe Trane::Docs::ServiceDefinition do
     # fallback. In practice RouteValidator rejects multi-verb contract routes
     # before they reach the docs, so these inputs cannot occur at runtime.
     it "returns the first verb when route.verb is a multi-verb String (Rails 8: was 'PATCH|PUT')" do
-      routes = [mock_route("PATCH|PUT", "/users/:id", "update_user")]
+      routes = [ mock_route("PATCH|PUT", "/users/:id", "update_user") ]
       op = described_class.generate(routes, service_name: "testapi")[:operations].find { |o| o[:id] == "update_user" }
       expect(op[:method]).to eq("PATCH")
     end
 
     it "returns the verb when route.verb is a single-verb Regexp" do
-      routes = [mock_route(/^GET$/, "/users/:id", "get_user")]
+      routes = [ mock_route(/^GET$/, "/users/:id", "get_user") ]
       op = described_class.generate(routes, service_name: "testapi")[:operations].find { |o| o[:id] == "get_user" }
       expect(op[:method]).to eq("GET")
     end
 
     it "returns the first verb when route.verb is a multi-verb Regexp (regression: was 'PATCHPUT')" do
-      routes = [mock_route(/^PATCH|PUT$/, "/users/:id", "update_user")]
+      routes = [ mock_route(/^PATCH|PUT$/, "/users/:id", "update_user") ]
       op = described_class.generate(routes, service_name: "testapi")[:operations].find { |o| o[:id] == "update_user" }
       expect(op[:method]).to eq("PATCH")
     end

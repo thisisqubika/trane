@@ -8,6 +8,9 @@ RSpec.describe "Trane::Engine trane.ignore_autoload_paths initializer", type: :i
   let(:initializer) do
     Trane::Engine.initializers.find { |i| i.name == "trane.ignore_autoload_paths" }
   end
+  let(:install_initializer) do
+    Trane::Engine.initializers.find { |i| i.name == "trane.install_application_hooks" }
+  end
 
   def run_initializer(app)
     initializer.instance_exec(app, &initializer.block)
@@ -25,6 +28,7 @@ RSpec.describe "Trane::Engine trane.ignore_autoload_paths initializer", type: :i
     Trane.configuration.instance_variable_set(:@frozen, original_frozen)
   end
 
+
   it "calls ignore on both autoloaders with the realpath string" do
     Dir.mktmpdir do |tmpdir|
       subdir = File.join(tmpdir, "custom")
@@ -32,7 +36,7 @@ RSpec.describe "Trane::Engine trane.ignore_autoload_paths initializer", type: :i
 
       main_autoloader = double("main_autoloader", ignore: nil)
       once_autoloader = double("once_autoloader", ignore: nil)
-      trane_opts      = double("trane_opts", respond_to?: true, contracts_paths: ["custom"])
+      trane_opts      = double("trane_opts", respond_to?: true, contracts_paths: [ "custom" ])
       app_config      = double("app_config",  respond_to?: true, trane: trane_opts)
       app             = double("app", root: Pathname.new(tmpdir), config: app_config)
 
@@ -46,7 +50,7 @@ RSpec.describe "Trane::Engine trane.ignore_autoload_paths initializer", type: :i
 
       with_unfrozen_config do
         run_initializer(app)
-        expect(Trane.configuration.contracts_paths).to eq(["custom"])
+        expect(Trane.configuration.contracts_paths).to eq([ "custom" ])
       end
     end
   end
@@ -55,7 +59,7 @@ RSpec.describe "Trane::Engine trane.ignore_autoload_paths initializer", type: :i
     Dir.mktmpdir do |tmpdir|
       main_autoloader = double("main_autoloader")
       once_autoloader = double("once_autoloader")
-      trane_opts      = double("trane_opts", respond_to?: true, contracts_paths: ["nonexistent"])
+      trane_opts      = double("trane_opts", respond_to?: true, contracts_paths: [ "nonexistent" ])
       app_config      = double("app_config",  respond_to?: true, trane: trane_opts)
       app             = double("app", root: Pathname.new(tmpdir), config: app_config)
 
@@ -78,7 +82,7 @@ RSpec.describe "Trane::Engine trane.ignore_autoload_paths initializer", type: :i
 
       main_autoloader = double("main_autoloader")
       once_autoloader = double("once_autoloader")
-      trane_opts      = double("trane_opts", respond_to?: true, contracts_paths: ["broken_link"])
+      trane_opts      = double("trane_opts", respond_to?: true, contracts_paths: [ "broken_link" ])
       app_config      = double("app_config",  respond_to?: true, trane: trane_opts)
       app             = double("app", root: Pathname.new(tmpdir), config: app_config)
 
@@ -101,7 +105,7 @@ RSpec.describe "Trane::Engine trane.ignore_autoload_paths initializer", type: :i
 
       main_autoloader = double("main_autoloader", ignore: nil)
       once_autoloader = double("once_autoloader", ignore: nil)
-      trane_opts      = double("trane_opts", respond_to?: true, contracts_paths: ["my_contracts"])
+      trane_opts      = double("trane_opts", respond_to?: true, contracts_paths: [ "my_contracts" ])
       app_config      = double("app_config",  respond_to?: true, trane: trane_opts)
       app             = double("app", root: Pathname.new(tmpdir), config: app_config)
 
@@ -110,14 +114,11 @@ RSpec.describe "Trane::Engine trane.ignore_autoload_paths initializer", type: :i
 
       with_unfrozen_config do
         run_initializer(app)
-        expect(Trane.configuration.contracts_paths).to eq(["my_contracts"])
+        expect(Trane.configuration.contracts_paths).to eq([ "my_contracts" ])
       end
     end
   end
 
-  let(:install_initializer) do
-    Trane::Engine.initializers.find { |i| i.name == "trane.install_application_hooks" }
-  end
 
   def run_install_initializer(app)
     install_initializer.instance_exec(app, &install_initializer.block)

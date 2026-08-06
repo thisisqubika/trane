@@ -22,7 +22,7 @@ RSpec.describe Trane::FieldNode do
         format: :iso8601,
         array_of: :string,
         required: true,
-        children: [child]
+        children: [ child ]
       )
 
       expect(node.name).to eq(:address)
@@ -31,7 +31,7 @@ RSpec.describe Trane::FieldNode do
       expect(node.format).to eq(:iso8601)
       expect(node.array_of).to eq(:string)
       expect(node.required).to be true
-      expect(node.children).to eq([child])
+      expect(node.children).to eq([ child ])
     end
 
     it "defaults required to nil" do
@@ -51,12 +51,12 @@ RSpec.describe Trane::FieldNode do
     end
 
     it "accepts enum: and returns the array" do
-      node = described_class.new(name: :x, enum: ["a", "b"])
-      expect(node.enum).to eq(["a", "b"])
+      node = described_class.new(name: :x, enum: [ "a", "b" ])
+      expect(node.enum).to eq([ "a", "b" ])
     end
 
     it "freezes the enum array" do
-      node = described_class.new(name: :x, enum: ["a", "b"])
+      node = described_class.new(name: :x, enum: [ "a", "b" ])
       expect(node.enum).to be_frozen
     end
 

@@ -134,15 +134,15 @@ RSpec.describe Trane::FieldBuilder do
     end
 
     it "builds a field with enum:" do
-      builder.field :status, type: :string, enum: ["active", "archived"]
+      builder.field :status, type: :string, enum: [ "active", "archived" ]
       field = builder.fields.first
 
-      expect(field.enum).to eq(["active", "archived"])
+      expect(field.enum).to eq([ "active", "archived" ])
     end
 
     it "raises ArgumentError when enum values do not match the declared type" do
       expect {
-        builder.field :count, type: :integer, enum: [1.0]
+        builder.field :count, type: :integer, enum: [ 1.0 ]
       }.to raise_error(ArgumentError, /not coherent with type :integer/)
     end
   end

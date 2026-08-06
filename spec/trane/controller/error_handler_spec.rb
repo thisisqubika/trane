@@ -42,6 +42,8 @@ RSpec.describe Trane::Controller::ErrorHandler do
     # Each example builds its own anonymous class via `let`, so specs that
     # call `controller_class.define_method(:_trane_unhandled_error)` to
     # override the fallback do not leak the override to other examples.
+    subject(:controller) { controller_class.new }
+
     let(:controller_class) do
       Class.new do
         def self.rescue_from(*); end
@@ -56,7 +58,6 @@ RSpec.describe Trane::Controller::ErrorHandler do
       end
     end
 
-    subject(:controller) { controller_class.new }
 
     it "matches by FQDN when registered as FQDN" do
       stub_const("Outer::Inner::AppError", Class.new(StandardError))

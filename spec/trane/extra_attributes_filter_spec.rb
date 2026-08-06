@@ -13,7 +13,7 @@ RSpec.describe Trane::ExtraAttributesFilter do
     end
 
     it "parses an array of extra attributes" do
-      result = described_class.parse({ extra_attributes: ["user.alias", "user.address.zip_code"] })
+      result = described_class.parse({ extra_attributes: [ "user.alias", "user.address.zip_code" ] })
       expect(result).to eq(Set["user.alias", "user.address.zip_code"])
     end
 

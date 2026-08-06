@@ -185,7 +185,6 @@ module Trane
     require "did_you_mean"
     DidYouMean::SpellChecker.new(dictionary: candidates.map(&:to_s)).correct(term.to_s).first
   end
-
 end
 
 require_relative "trane/docs/service_definition"

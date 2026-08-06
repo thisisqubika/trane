@@ -17,11 +17,11 @@ module Trane
       private
 
       def serve_json
-        [200, { "content-type" => "application/json; charset=utf-8" }, [Cache.json]]
+        [ 200, { "content-type" => "application/json; charset=utf-8" }, [ Cache.json ] ]
       end
 
       def serve_html
-        [200, { "content-type" => "text/html; charset=utf-8" }, [Cache.html]]
+        [ 200, { "content-type" => "text/html; charset=utf-8" }, [ Cache.html ] ]
       end
     end
   end

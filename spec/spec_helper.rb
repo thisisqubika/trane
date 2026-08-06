@@ -20,7 +20,7 @@ RSpec.configure do |config|
 
   # Reset registry before each unit test, but not integration tests
   # (integration tests load contracts via the dummy Rails app)
-  config.before(:each) do |example|
+  config.before do |example|
     unless example.metadata[:type] == :integration
       Trane::Registry.reset!
       Trane::Configuration.instance.reset!

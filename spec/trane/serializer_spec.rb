@@ -124,8 +124,8 @@ RSpec.describe Trane::Serializer do
       response_def = build_response(200) { field :tags, type: :array, of: :string }
       serializer = described_class.new(response_def, Trane::Registry)
 
-      result = serializer.serialize({ tags: ["ruby", "rails"] })
-      expect(result[:tags]).to eq(["ruby", "rails"])
+      result = serializer.serialize({ tags: [ "ruby", "rails" ] })
+      expect(result[:tags]).to eq([ "ruby", "rails" ])
     end
 
     it "returns nil for nil array value" do
@@ -197,7 +197,7 @@ RSpec.describe Trane::Serializer do
 
       result = serializer.serialize({ user: user })
       expect(result[:user][:birthday]).to eq("1990-05-15")
-      expect(result[:user][:created_at]).to match(/2026-04-01/)
+      expect(result[:user][:created_at]).to include('2026-04-01')
     end
 
     it "does not apply format when value doesn't respond to iso8601" do
@@ -216,7 +216,7 @@ RSpec.describe Trane::Serializer do
       response_def = build_response(200) { field :data, type: :object }
       serializer = described_class.new(response_def, Trane::Registry)
 
-      payload = { arbitrary: "structure", nested: { with: [1, 2] } }
+      payload = { arbitrary: "structure", nested: { with: [ 1, 2 ] } }
       result = serializer.serialize({ data: payload })
 
       expect(result[:data]).to eq(payload)
@@ -228,7 +228,7 @@ RSpec.describe Trane::Serializer do
 
       expect(serializer.serialize({ data: 42 })[:data]).to eq(42)
       expect(serializer.serialize({ data: "raw" })[:data]).to eq("raw")
-      expect(serializer.serialize({ data: [1, 2, 3] })[:data]).to eq([1, 2, 3])
+      expect(serializer.serialize({ data: [ 1, 2, 3 ] })[:data]).to eq([ 1, 2, 3 ])
     end
 
     it "returns nil when the value is nil" do

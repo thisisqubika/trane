@@ -126,7 +126,7 @@ RSpec.describe "Operation DSL" do
       end
       op = builder.build
 
-      expect(op.responses.keys).to eq([200])
+      expect(op.responses.keys).to eq([ 200 ])
       resp = op.responses[200]
       expect(resp.status).to eq(200)
       expect(resp.fields.length).to eq(1)
@@ -159,7 +159,7 @@ RSpec.describe "Operation DSL" do
       end
       op = builder.build
 
-      expect(op.error_keys).to eq([:UserNotFound, :UserInvalid])
+      expect(op.error_keys).to eq([ :UserNotFound, :UserInvalid ])
     end
 
     it "builds a full operation with all components" do
@@ -192,8 +192,8 @@ RSpec.describe "Operation DSL" do
       expect(op.summary).to eq("Update a user")
       expect(op.request.params.length).to eq(1)
       expect(op.request.body_fields.length).to eq(1)
-      expect(op.responses.keys).to eq([200])
-      expect(op.error_keys).to eq([:UserNotFound, :UserInvalid])
+      expect(op.responses.keys).to eq([ 200 ])
+      expect(op.error_keys).to eq([ :UserNotFound, :UserInvalid ])
     end
 
     describe "path validation" do
@@ -266,11 +266,11 @@ RSpec.describe "Operation DSL" do
         builder = described_class.new(:list_items)
         builder.instance_eval do
           request do
-            query :sort, type: :string, enum: ["asc", "desc"]
+            query :sort, type: :string, enum: [ "asc", "desc" ]
           end
         end
         param = builder.build.request.params.first
-        expect(param.enum).to eq(["asc", "desc"])
+        expect(param.enum).to eq([ "asc", "desc" ])
       end
 
       it "raises ArgumentError when enum values mismatch type" do
@@ -278,7 +278,7 @@ RSpec.describe "Operation DSL" do
         expect {
           builder.instance_eval do
             request do
-              query :count, type: :integer, enum: [1.0]
+              query :count, type: :integer, enum: [ 1.0 ]
             end
           end
         }.to raise_error(ArgumentError, /not coherent with type :integer/)
@@ -290,7 +290,7 @@ RSpec.describe "Operation DSL" do
         expect {
           Trane.operation :bad_path_enum_op do
             request do
-              path :id, type: :integer, enum: [1, 2, 3]
+              path :id, type: :integer, enum: [ 1, 2, 3 ]
             end
           end
         }.to raise_error(ArgumentError, /unknown keyword: :?enum/)
@@ -303,12 +303,12 @@ RSpec.describe "Operation DSL" do
         builder.instance_eval do
           request do
             body do
-              field :status, type: :string, enum: ["draft", "published"]
+              field :status, type: :string, enum: [ "draft", "published" ]
             end
           end
         end
         field = builder.build.request.body_fields.first
-        expect(field.enum).to eq(["draft", "published"])
+        expect(field.enum).to eq([ "draft", "published" ])
       end
     end
   end

@@ -13,7 +13,7 @@ RSpec.describe "Representation DSL" do
 
       expect(rep.name).to eq(:user)
       expect(rep.fields.length).to eq(3)
-      expect(rep.fields.map(&:name)).to eq([:id, :name, :email])
+      expect(rep.fields.map(&:name)).to eq([ :id, :name, :email ])
     end
 
     it "builds a representation with format" do

@@ -5,7 +5,7 @@ module Trane
     # Default contracts paths resolved relative to the Rails application root.
     # Hosts that need a different location should set
     # `config.trane.contracts_paths` in `config/application.rb`.
-    DEFAULT_CONTRACTS_PATHS = ["app/api_contract"].freeze
+    DEFAULT_CONTRACTS_PATHS = [ "app/api_contract" ].freeze
 
     attr_reader :strict_mode
 
