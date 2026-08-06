@@ -10,6 +10,7 @@ group :development, :test do
   gem "rails", ">= 7.0"
   gem "sqlite3"
 
+  gem "rubocop",               require: false
   gem "rubocop-rails-omakase", require: false
   gem "rubocop-rspec",         require: false
   gem "rubocop-performance",   require: false
