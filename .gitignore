@@ -1,3 +1,4 @@
 .DS_Store
 docs/superpowers/
+.superpowers/
 spec/integration/dummy/log/*.log
