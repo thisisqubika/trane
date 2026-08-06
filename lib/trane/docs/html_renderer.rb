@@ -68,9 +68,9 @@ module Trane
         name         = h(field[:name])
         type         = field[:type] || "object"
         type_display = if field[:array_of]
-                         "array of #{representation_link(field[:array_of])}"
+          "array of #{representation_link(field[:array_of])}"
         else
-                         representation_link(type)
+          representation_link(type)
         end
         extra_badge  = field[:extra] ? ' <span class="badge extra">extra</span>' : ""
         format_badge = field[:format] ? " <span class=\"badge format\">#{h(field[:format])}</span>" : ""
