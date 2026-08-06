@@ -9,4 +9,12 @@ group :development, :test do
   gem "rack-test"
   gem "rails", "~> 8.1.0"
   gem "sqlite3"
+
+  gem "rubocop",               require: false
+  gem "rubocop-rails-omakase", require: false
+  gem "rubocop-rspec",         require: false
+  gem "rubocop-performance",   require: false
+  gem "rubocop-packaging",     require: false
+  gem "rubocop-rake",          require: false
+  gem "rubocop-thread_safety", require: false
 end

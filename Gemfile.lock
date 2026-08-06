@@ -304,6 +304,7 @@ DEPENDENCIES
   rack-test
   rails (>= 7.0)
   rspec (~> 3.0)
+  rubocop
   rubocop-packaging
   rubocop-performance
   rubocop-rails-omakase
