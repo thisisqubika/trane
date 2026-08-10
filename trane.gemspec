@@ -15,10 +15,11 @@ Gem::Specification.new do |spec|
   spec.license       = "MIT"
   spec.required_ruby_version = ">= 3.2.0"
 
-  spec.files = Dir["lib/**/*", "LICENSE.txt"]
+  spec.files = Dir["lib/**/*", "LICENSE.txt", "README.md"]
   spec.require_paths = [ "lib" ]
 
   spec.add_dependency "railties",      ">= 7.2", "< 9"
   spec.add_dependency "activesupport", ">= 7.2", "< 9"
   spec.add_dependency "actionpack",    ">= 7.2", "< 9"
+  spec.add_dependency "rack",          ">= 2.2.4", "< 4"
 end

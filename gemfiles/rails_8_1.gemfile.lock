@@ -4,6 +4,7 @@ PATH
     trane (0.1.0)
       actionpack (>= 7.2, < 9)
       activesupport (>= 7.2, < 9)
+      rack (>= 2.2.4, < 4)
       railties (>= 7.2, < 9)
 
 GEM
@@ -255,8 +256,6 @@ GEM
       rubocop-ast (>= 1.44.0, < 2.0)
     ruby-progressbar (1.13.0)
     securerandom (0.4.1)
-    sqlite3 (2.9.5-aarch64-linux-gnu)
-    sqlite3 (2.9.5-arm64-darwin)
     thor (1.5.0)
     timeout (0.6.1)
     tsort (0.2.0)
@@ -275,6 +274,7 @@ GEM
 
 PLATFORMS
   aarch64-linux-gnu
+  arm64-darwin-24
   arm64-darwin-25
 
 DEPENDENCIES
@@ -288,7 +288,6 @@ DEPENDENCIES
   rubocop-rake
   rubocop-rspec
   rubocop-thread_safety
-  sqlite3
   trane!
 
 CHECKSUMS
@@ -372,8 +371,6 @@ CHECKSUMS
   rubocop-thread_safety (0.7.3) sha256=067cdd52fbf5deffc18995437e45b5194236eaff4f71de3375a1f6052e48f431
   ruby-progressbar (1.13.0) sha256=80fc9c47a9b640d6834e0dc7b3c94c9df37f08cb072b7761e4a71e22cff29b33
   securerandom (0.4.1) sha256=cc5193d414a4341b6e225f0cb4446aceca8e50d5e1888743fac16987638ea0b1
-  sqlite3 (2.9.5-aarch64-linux-gnu) sha256=78075b6337d3d182c6d2b4691049ed45cd220826160c9ea18946bf6a1de200dc
-  sqlite3 (2.9.5-arm64-darwin) sha256=d0cf444a70fc9395d513cfbcc1e6719e224aa645314e3824cb0474c721425aa2
   thor (1.5.0) sha256=e3a9e55fe857e44859ce104a84675ab6e8cd59c650a49106a05f55f136425e73
   timeout (0.6.1) sha256=78f57368a7e7bbadec56971f78a3f5ecbcfb59b7fcbb0a3ed6ddc08a5094accb
   trane (0.1.0)
