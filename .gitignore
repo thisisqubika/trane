@@ -3,3 +3,4 @@ docs/superpowers/
 .superpowers/
 spec/integration/dummy/log/*.log
 docs/TODO.md
+gemfiles/*.gemfile.lock
