@@ -41,27 +41,28 @@ module Trane
         rescue_from StandardError, with: :_trane_handle_error
       end
 
-      # Returns the frozen array of Rails-reserved exception classes derived
-      # from ActionDispatch::ExceptionWrapper.rescue_responses. Memoized on
-      # first call (after Rails boot completes). Returns [] when Rails is
-      # not loaded.
+      # Returns the frozen Set of Rails-reserved exception class NAMES
+      # (Strings) derived from ActionDispatch::ExceptionWrapper.rescue_responses.
+      # Memoized on first call (after Rails boot completes). Returns an empty
+      # Set when Rails is not loaded.
+      #
+      # Names, not Class objects, on purpose: memoizing classes would pin
+      # host-registered (Zeitwerk-reloadable) exception constants in the gem
+      # forever, and after a development reload the stale Class would no
+      # longer match its reloaded replacement. Names survive reloads.
       #
       # NOTE: callers MUST invoke this post-boot. The Rails Engine initializers
       # merge AR/AC entries into `rescue_responses` during boot; calling this
       # earlier would memoize an incomplete list. In practice the first error
       # arrives in a request thread, which is always post-boot — but tests or
-      # explicit pre-boot invocations would have to reset @rails_reserved_classes
+      # explicit pre-boot invocations would have to reset @rails_reserved_names
       # afterwards.
-      def self.rails_reserved_classes
-        @rails_reserved_classes ||= begin
+      def self.rails_reserved_names
+        @rails_reserved_names ||= begin
           if defined?(ActionDispatch::ExceptionWrapper)
-            ActionDispatch::ExceptionWrapper
-              .rescue_responses
-              .keys
-              .filter_map { |name| name.is_a?(String) ? name.safe_constantize : nil }
-              .freeze
+            Set.new(ActionDispatch::ExceptionWrapper.rescue_responses.keys.grep(String)).freeze
           else
-            [].freeze
+            Set.new.freeze
           end
         end
       end
@@ -88,7 +89,10 @@ module Trane
       end
 
       def _trane_rails_reserved?(klass)
-        ErrorHandler.rails_reserved_classes.any? { |reserved| klass <= reserved }
+        names = ErrorHandler.rails_reserved_names
+        return false if names.empty?
+
+        klass.ancestors.any? { |ancestor| names.include?(ancestor.name) }
       end
 
       def _trane_unhandled_error(exception)

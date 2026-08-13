@@ -88,13 +88,34 @@ module Trane
       end
     end
 
-    # Per-application Trane registry. Owns its own snapshot ivar and
-    # replacement mutex; instances are independent of one another.
+    # Trane registry. Owns its own snapshot ivar and replacement mutex;
+    # instances are independent of one another.
     class Instance
+      # Single process-wide thread-local key holding a Hash of
+      # { instance object_id => active SnapshotBuilder } for the builders
+      # opened on the current thread. Keyed per instance so a builder is
+      # only visible to `register_*` calls on the same instance AND the
+      # same thread; entries are deleted in `replace!`'s ensure, so the
+      # table is empty between calls. One constant Symbol replaces the
+      # previous per-instance dynamic symbols, which pinned a symbol and a
+      # thread-local entry per discarded instance for the thread's lifetime
+      # (`thread_variable_set(key, nil)` does not delete the key).
+      ACTIVE_BUILDERS_KEY = :trane_active_builders
+
+      # Defensive bound for the three object_id-keyed caches below
+      # (@compiled_serializers, @validator_field_names,
+      # @validator_declared_field_names). Under their documented invariant —
+      # keys are objects owned by the current frozen snapshot — the caches
+      # are cleared on every snapshot change and stay small (one entry per
+      # response/fields object in the registry). The bound only matters if a
+      # caller violates the invariant by passing transient objects built per
+      # request: past it, results are built without caching (a perf
+      # degradation) instead of growing the caches without limit (a leak).
+      MAX_CACHE_ENTRIES = 10_000
+
       def initialize
         @snapshot                       = EMPTY_SNAPSHOT
         @replace_mutex                  = Mutex.new
-        @builder_key                    = :"trane_active_builder_#{object_id}"
         @compiled_serializers           = {}
         @validator_field_names          = {}
         @validator_declared_field_names = {}
@@ -133,14 +154,14 @@ module Trane
 
         @replace_mutex.synchronize do
           builder = SnapshotBuilder.new
-          Thread.current.thread_variable_set(@builder_key, builder)
+          active_builders[object_id] = builder
           yield builder
           @snapshot = builder.freeze_and_build
           @compiled_serializers           = {}
           @validator_field_names          = {}
           @validator_declared_field_names = {}
         ensure
-          Thread.current.thread_variable_set(@builder_key, nil)
+          active_builders.delete(object_id)
         end
       end
 
@@ -208,6 +229,12 @@ module Trane
       # cached until the registry snapshot changes (via replace!, reset!, or
       # any of the register_* copy-on-write paths).
       #
+      # INVARIANT: response_def must be owned by the current snapshot (i.e.
+      # reachable from `operations`). The cache is keyed by object_id without
+      # holding the object, so it can never notice a dead key; passing
+      # transient objects built per call would grow it until
+      # MAX_CACHE_ENTRIES, after which results are built uncached.
+      #
       # Thread-safety: concurrent first access on the same key may build two
       # Serializers; last write wins. Subsequent reads share the cached
       # instance. Serializer is frozen post-init and safe to share across
@@ -217,34 +244,59 @@ module Trane
       # @param strict_mode [Symbol] :raise, :log, or :ignore
       # @return [Trane::Serializer]
       def compiled_serializer_for(response_def, strict_mode)
-        key = [ response_def.object_id, strict_mode ]
-        @compiled_serializers[key] ||= Trane::Serializer.new(response_def, self, strict_mode: strict_mode)
+        key    = [ response_def.object_id, strict_mode ]
+        cached = @compiled_serializers[key]
+        return cached if cached
+
+        built = Trane::Serializer.new(response_def, self, strict_mode: strict_mode)
+        @compiled_serializers[key] = built if @compiled_serializers.size < MAX_CACHE_ENTRIES
+        built
       end
 
       # Cached frozen Array of all field names for a given fields collection.
       # Used by ContractValidator to detect undeclared keys without per-request
-      # allocation. Same lifecycle / invalidation as @compiled_serializers.
+      # allocation. Same lifecycle / invalidation / INVARIANT (snapshot-owned
+      # `fields` only) and MAX_CACHE_ENTRIES bound as @compiled_serializers.
       #
       # @param fields [Array<Trane::FieldNode>] frozen fields array
       # @return [Array<Symbol>] frozen Array of field names
       def validator_field_names_for(fields)
-        @validator_field_names[fields.object_id] ||= fields.map(&:name).freeze
+        cached = @validator_field_names[fields.object_id]
+        return cached if cached
+
+        built = fields.map(&:name).freeze
+        @validator_field_names[fields.object_id] = built if @validator_field_names.size < MAX_CACHE_ENTRIES
+        built
       end
 
       # Cached frozen Array of non-`extra:` field names. Used by ContractValidator
-      # to detect missing declared keys.
+      # to detect missing declared keys. Same lifecycle / invalidation /
+      # INVARIANT (snapshot-owned `fields` only) and MAX_CACHE_ENTRIES bound
+      # as @compiled_serializers.
       #
       # @param fields [Array<Trane::FieldNode>] frozen fields array
       # @return [Array<Symbol>] frozen Array of declared (non-extra) field names
       def validator_declared_field_names_for(fields)
-        @validator_declared_field_names[fields.object_id] ||=
-          fields.reject(&:extra).map(&:name).freeze
+        cached = @validator_declared_field_names[fields.object_id]
+        return cached if cached
+
+        built = fields.reject(&:extra).map(&:name).freeze
+        @validator_declared_field_names[fields.object_id] = built if @validator_declared_field_names.size < MAX_CACHE_ENTRIES
+        built
       end
 
       private
 
+      # The current thread's { instance object_id => builder } table,
+      # created lazily (one Hash per thread that has ever run replace!).
+      def active_builders
+        Thread.current.thread_variable_get(ACTIVE_BUILDERS_KEY) ||
+          {}.tap { |table| Thread.current.thread_variable_set(ACTIVE_BUILDERS_KEY, table) }
+      end
+
       def active_builder
-        Thread.current.thread_variable_get(@builder_key)
+        table = Thread.current.thread_variable_get(ACTIVE_BUILDERS_KEY)
+        table && table[object_id]
       end
     end
 

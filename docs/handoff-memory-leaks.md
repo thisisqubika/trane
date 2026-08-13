@@ -10,6 +10,37 @@ herramienta que lo valide de forma continua— **quedó pendiente**, ver
 
 ---
 
+## Estado (2026-08-13) — todo cerrado
+
+Los 4 hallazgos fueron validados contra el código (reproducción empírica de
+todas las mediciones, Ruby 3.4.7) y quedaron resueltos:
+
+- **Hallazgo 1 — arreglado.** `rails_reserved_classes` fue reemplazado por
+  `rails_reserved_names`: memoiza nombres (Strings) y compara contra
+  `klass.ancestors` por nombre. Sin pinning y sin el bug de development
+  post-reload. Spec de regresión que simula el reload incluido.
+- **Hallazgo 2 — cerrado por diseño.** El soporte multi-app se eliminó
+  (`hooks_registry`, `ApplicationHooks`, `with_application`, etc. ya no
+  existen); Trane tiene un registry y configuración únicos por proceso y
+  `Trane.reset!` para specs.
+- **Hallazgo 3 — arreglado.** Clave thread-local constante
+  (`Instance::ACTIVE_BUILDERS_KEY`) con Hash `{object_id => builder}` y
+  `delete` en el `ensure`. Sin símbolos dinámicos ni claves residuales;
+  spec de higiene incluido.
+- **Hallazgo 4 — mitigado.** Invariante documentada en los tres métodos
+  (solo objetos del snapshot actual) + tope defensivo
+  (`Instance::MAX_CACHE_ENTRIES`): al excederse se construye sin cachear.
+- **Pendiente 1 (validación continua) — resuelto.** Las mediciones A y B son
+  ahora `spec/trane/memory_regression_spec.rb` (umbral de `heap_live_slots`,
+  validado que detecta una fuga de 1 objeto/iteración).
+- **Fuera de alcance (contención de mutex) — desapareció** junto con el
+  multi-app: `Trane.registry` es una lectura de ivar.
+
+El resto del documento se conserva como registro de la auditoría original;
+las referencias archivo:línea corresponden a la base `a443db2`.
+
+---
+
 ## Resumen
 
 El camino caliente **no tiene fugas**. El diseño de snapshot inmutable con
