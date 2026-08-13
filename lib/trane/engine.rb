@@ -7,29 +7,6 @@ module Trane
   class Engine < ::Rails::Engine
     isolate_namespace Trane
 
-    # Install per-application Trane hooks (registry + configuration) on
-    # this Rails::Application's config slot before host initializers run.
-    # The first Rails application booted in the process reuses the gem's
-    # process-level default hooks so pre-Engine writes (e.g. unit specs
-    # that call Trane.operation before Rails boots) are preserved. Any
-    # subsequent application booted in the same process gets a fresh,
-    # isolated pair.
-    #
-    # Must run before trane.ignore_autoload_paths so that Trane.configuration
-    # resolves to the per-app hooks (not the global default_hooks) when
-    # _set_contracts_paths! is called. Running both at before: :set_autoload_paths
-    # with an explicit after: dependency guarantees this order even in multi-app
-    # scenarios where default_hooks may already be frozen.
-    #
-    # NOTE: The to_prepare block and freeze_configuration initializer below
-    # intentionally route through the Trane::Registry / Trane::Configuration
-    # module-level shims (rather than app.config.trane.registry directly) to
-    # preserve mock compatibility in engine_to_prepare_error_context_spec.rb.
-    # If you ever change them to bypass the shim, update that spec accordingly.
-    initializer "trane.install_application_hooks", before: :set_autoload_paths do |app|
-      Trane.install_hooks_for_app(app) unless Trane.hooks_for(app)
-    end
-
     # Tell Zeitwerk to ignore all contracts paths in the host application.
     # Files there are DSL declarations (Trane.operation, Trane.representation,
     # Trane.errors) that do not define Ruby constants. Without this ignore,
@@ -38,12 +15,7 @@ module Trane
     #
     # Hosts override the paths via `config.trane.contracts_paths = [...]` in
     # `config/application.rb` (NOT in config/initializers/trane.rb — too late).
-    #
-    # Runs after trane.install_application_hooks so Trane.configuration resolves
-    # to the per-app hooks before _set_contracts_paths! is called.
-    initializer "trane.ignore_autoload_paths",
-                before: :set_autoload_paths,
-                after: "trane.install_application_hooks" do |app|
+    initializer "trane.ignore_autoload_paths", before: :set_autoload_paths do |app|
       raw_paths = (app.config.respond_to?(:trane) &&
                    app.config.trane.respond_to?(:contracts_paths) &&
                    app.config.trane.contracts_paths) ||
@@ -103,15 +75,19 @@ module Trane
     initializer "trane.validate_route_contracts", after: :set_routes_reloader_hook do |app|
       next unless app.config.eager_load
 
-      Trane.with_application(app) do
-        Trane::RouteValidator.validate!(app.routes.routes, Trane.registry)
-      end
+      Trane::RouteValidator.validate!(app.routes.routes, Trane.registry)
     end
 
     # Auto-load contract definition files and validate on each prepare.
     # Each of the three steps (registry reload, boot validation, docs
     # precompute) is wrapped to add actionable context to any failure
     # while preserving the original exception via `cause:`.
+    #
+    # NOTE: This block and the freeze_configuration initializer above
+    # intentionally route through the Trane::Registry / Trane::Configuration
+    # module-level shims (rather than Trane.registry directly) to preserve
+    # mock compatibility in engine_to_prepare_error_context_spec.rb.
+    # If you ever change them to bypass the shim, update that spec accordingly.
     #
     # Loading order across all contracts_paths:
     #   Phase 1 — every errors.rb from every base path (in declaration order).

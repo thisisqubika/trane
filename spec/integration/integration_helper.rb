@@ -24,7 +24,7 @@ RSpec.configure do |config|
   # Re-populate registry and re-apply the dummy initializer before each
   # integration test (unit specs may have reset either between examples).
   config.before(:each, type: :integration) do
-    Trane::Configuration.instance.reset!
+    Trane.reset!
     Trane.configure do |c|
       c.strict_mode = :ignore
     end
@@ -45,7 +45,6 @@ RSpec.configure do |config|
         end
       end
     end
-    Trane::Docs::Cache.invalidate! if defined?(Trane::Docs::Cache)
   end
 
   config.shared_context_metadata_behavior = :apply_to_host_groups

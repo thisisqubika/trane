@@ -36,8 +36,7 @@ module Trane
             return super(json: contract_data, status: status, **extra_options, &block)
           end
 
-          hooks    = Trane.current_hooks
-          registry = hooks.registry
+          registry = Trane.registry
 
           op = registry.operations[op_name]
           unless op
@@ -53,7 +52,7 @@ module Trane
           end
 
           extra_attrs = ExtraAttributesFilter.parse(params)
-          strict      = hooks.configuration.effective_strict_mode
+          strict      = Trane.configuration.effective_strict_mode
           serializer  = registry.compiled_serializer_for(response_def, strict)
           hash        = serializer.serialize(contract_data, extra_attributes: extra_attrs)
 

@@ -20,7 +20,6 @@ require_relative "trane/operation_definition"
 require_relative "trane/representation_definition"
 require_relative "trane/error_registry"
 require_relative "trane/registry"
-require_relative "trane/application_hooks"
 require_relative "trane/serializer"
 require_relative "trane/extra_attributes_filter"
 require_relative "trane/boot_validator"
@@ -30,143 +29,37 @@ require_relative "trane/controller"
 require_relative "trane/routing_extension"
 
 module Trane
-  THREAD_LOCAL_HOOKS_KEY = :trane_explicit_hooks
-  CLAIM_MUTEX = Mutex.new
-  DEFAULT_HOOKS_MUTEX = Mutex.new
-  HOOKS_REGISTRY_MUTEX = Mutex.new
-  WARN_FALLBACK_MUTEX = Mutex.new
+  # Process-level Trane state. Trane supports exactly one Rails application
+  # per Ruby process — the standard Rails deployment model. The registry and
+  # configuration are created eagerly at require time so pre-boot DSL
+  # registrations (e.g. unit specs calling Trane.operation before Rails
+  # boots) land in the same objects the booted application later uses.
+  @registry      = Registry::Instance.new
+  @configuration = Configuration.new
 
   def self.configure
     yield configuration
   end
 
-  # Returns the current application's Configuration instance.
+  # Returns the process-level Configuration.
   def self.configuration
-    current_hooks.configuration
+    @configuration
   end
 
-  # Returns the current application's Registry::Instance.
+  # Returns the process-level Registry::Instance.
   def self.registry
-    current_hooks.registry
+    @registry
   end
 
-  # Returns the ApplicationHooks for the current Rails application. When
-  # no Rails.application is present (pre-boot, console, rake) returns
-  # the process-level default hooks shared by single-app deployments.
-  def self.current_hooks
-    explicit = Thread.current.thread_variable_get(THREAD_LOCAL_HOOKS_KEY)
-    return explicit if explicit
-
-    if defined?(Rails) && Rails.application
-      hooks = hooks_registry[Rails.application.object_id]
-      return hooks if hooks
-      warn_default_hooks_fallback
-      default_hooks
-    else
-      default_hooks
-    end
-  end
-
-  # Returns (memoizing) the process-level default ApplicationHooks instance.
-  # This is the hooks object used by the first Rails application booted in
-  # the process so that pre-boot DSL registrations are preserved.
-  def self.default_hooks
-    DEFAULT_HOOKS_MUTEX.synchronize do
-      @default_hooks ||= ApplicationHooks.new(
-        registry:      Registry::Instance.new,
-        configuration: Configuration.new
-      )
-    end
-  end
-
-  # Emits a one-time warning when Trane.current_hooks falls back to
-  # default_hooks despite Rails.application being set. This usually means
-  # the Engine initializer did not run for that app — a real bug surface
-  # worth surfacing without breaking single-app behaviour.
-  def self.warn_default_hooks_fallback
-    first_warning = WARN_FALLBACK_MUTEX.synchronize do
-      already_warned = @warned_default_fallback
-      @warned_default_fallback = true
-      !already_warned
-    end
-    return unless first_warning
-
-    msg = "[Trane] current_hooks falling back to default_hooks for #{Rails.application.class.name}; " \
-          "the Engine's trane.install_application_hooks initializer may not have run for this app."
-    if defined?(Rails.logger) && Rails.logger
-      Rails.logger.warn(msg)
-    else
-      warn(msg)
-    end
-  end
-
-  # Internal — per-application hooks storage keyed by Rails::Application
-  # object_id. Public callers should use install_hooks_for / hooks_for /
-  # uninstall_hooks_for / with_application instead of touching this Hash
-  # directly. Isolated from Rails::Railtie::Configuration's shared @@options
-  # so anonymous Rails::Application subclasses get truly separate hooks.
-  def self.hooks_registry
-    HOOKS_REGISTRY_MUTEX.synchronize { @hooks_registry ||= {} }
-  end
-
-  # Installs ApplicationHooks for a given Rails application instance,
-  # keyed by the application's object_id for true per-instance isolation.
-  def self.install_hooks_for(rails_app, hooks)
-    hooks_registry[rails_app.object_id] = hooks
-  end
-
-  # Returns the ApplicationHooks registered for a given Rails application,
-  # or nil if none have been installed.
-  def self.hooks_for(rails_app)
-    hooks_registry[rails_app.object_id]
-  end
-
-  # Removes the ApplicationHooks registered for a given Rails application.
-  # Use this in test teardown to prevent the hooks_registry from growing
-  # unboundedly when tests create anonymous Rails::Application subclasses.
-  def self.uninstall_hooks_for(rails_app)
-    hooks_registry.delete(rails_app.object_id)
-  end
-
-  # Atomically installs hooks for a Rails application via the Engine
-  # initializer. The first app booted in the process claims the gem's
-  # default hooks (preserving pre-boot DSL registrations); subsequent
-  # apps get fresh, isolated hook pairs. CLAIM_MUTEX makes the claim
-  # decision race-free under concurrent boot.
-  def self.install_hooks_for_app(rails_app)
-    CLAIM_MUTEX.synchronize do
-      return hooks_registry[rails_app.object_id] if hooks_registry.key?(rails_app.object_id)
-
-      hooks = if @default_hooks_claimed
-        ApplicationHooks.new(
-          registry:      Registry::Instance.new,
-          configuration: Configuration.new
-        )
-      else
-        @default_hooks_claimed = true
-        default_hooks
-      end
-      hooks_registry[rails_app.object_id] = hooks
-    end
-  end
-
-  # Scopes Trane DSL and lookup calls inside the block to the given
-  # Rails application's hooks. Intended for multi-application scripts,
-  # specs, and rake tasks that need to address a specific app explicitly.
-  def self.with_application(rails_app)
-    # Capture prior before any raise so the ensure block doesn't clobber an
-    # outer with_application frame's hooks if hooks_for(rails_app) returns nil.
-    prior = Thread.current.thread_variable_get(THREAD_LOCAL_HOOKS_KEY)
-    set_thread_hooks = false
-
-    hooks = hooks_for(rails_app)
-    raise Trane::Error, "Trane: application has no Trane hooks installed; the Engine initializer must have run" unless hooks
-
-    Thread.current.thread_variable_set(THREAD_LOCAL_HOOKS_KEY, hooks)
-    set_thread_hooks = true
-    yield
-  ensure
-    Thread.current.thread_variable_set(THREAD_LOCAL_HOOKS_KEY, prior) if set_thread_hooks
+  # Restores Trane to a pristine state: empties the registry (snapshot and
+  # derived caches), clears the configuration (values and frozen flag), and
+  # invalidates the docs cache. Intended for test suites that need isolation
+  # between examples or that boot throwaway Rails applications.
+  def self.reset!
+    registry.reset!
+    configuration.reset!
+    Docs::Cache.invalidate! if defined?(Docs::Cache)
+    nil
   end
 
   def self.operation(name, &block)

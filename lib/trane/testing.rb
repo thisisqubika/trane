@@ -20,11 +20,6 @@ module Trane
     # via `Trane.configure`), and `config.reset!` clears it along with
     # `strict_mode`. This helper snapshots and restores both, so a host with a
     # custom `contracts_paths` does not lose it across a call to this helper.
-    #
-    # Multi-app caveat: this helper mutates `Trane.configuration`, which
-    # resolves via current_hooks → thread-local override or Rails.application.
-    # Inside a `Trane.with_application(other_app)` block it mutates other_app's
-    # Configuration, not Rails.application's.
     def self.with_configuration(**attrs)
       raise Trane::Error, "Trane::Testing.with_configuration requires Rails.application" unless defined?(Rails) && Rails.application
 

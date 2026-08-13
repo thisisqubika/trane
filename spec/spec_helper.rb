@@ -18,12 +18,10 @@ RSpec.configure do |config|
   config.order = :random
   Kernel.srand config.seed
 
-  # Reset registry before each unit test, but not integration tests
-  # (integration tests load contracts via the dummy Rails app)
+  # Reset registry and configuration before each unit test, but not
+  # integration tests (integration tests load contracts via the dummy
+  # Rails app)
   config.before do |example|
-    unless example.metadata[:type] == :integration
-      Trane::Registry.reset!
-      Trane::Configuration.instance.reset!
-    end
+    Trane.reset! unless example.metadata[:type] == :integration
   end
 end

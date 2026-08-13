@@ -13,7 +13,7 @@ module Trane
   # `register_*` methods do copy-on-write to a new snapshot — O(n) per
   # write but bounded by spec sizes (typically < 100 entries).
   #
-  # Class methods on this module delegate to the current application's
+  # Class methods on this module delegate to the process-level
   # `Registry::Instance` via `Trane.registry`. Existing call sites
   # (`Trane::Registry.reset!` etc.) continue to work unchanged.
   module Registry
