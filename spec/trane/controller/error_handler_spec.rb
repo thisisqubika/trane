@@ -113,7 +113,7 @@ RSpec.describe Trane::Controller::ErrorHandler do
     end
 
     it "re-raises a Rails-reserved exception when no Trane match exists" do
-      described_class.instance_variable_set(:@rails_reserved_classes, nil)
+      described_class.instance_variable_set(:@rails_reserved_names, nil)
       stub_const("ActiveRecord::RecordNotFound", Class.new(StandardError))
       fake_wrapper = double("ExceptionWrapper", rescue_responses: { "ActiveRecord::RecordNotFound" => :not_found })
       stub_const("ActionDispatch::ExceptionWrapper", fake_wrapper)
@@ -125,12 +125,12 @@ RSpec.describe Trane::Controller::ErrorHandler do
           controller.send(:_trane_handle_error, exception)
         }.to raise_error(ActiveRecord::RecordNotFound, "raw AR miss")
       ensure
-        described_class.instance_variable_set(:@rails_reserved_classes, nil)
+        described_class.instance_variable_set(:@rails_reserved_names, nil)
       end
     end
 
     it "re-raises a subclass of a Rails-reserved exception when no Trane match exists" do
-      described_class.instance_variable_set(:@rails_reserved_classes, nil)
+      described_class.instance_variable_set(:@rails_reserved_names, nil)
       stub_const("ActiveRecord::RecordNotFound", Class.new(StandardError))
       stub_const("MyApp::SpecificRecordNotFound", Class.new(ActiveRecord::RecordNotFound))
       fake_wrapper = double("ExceptionWrapper", rescue_responses: { "ActiveRecord::RecordNotFound" => :not_found })
@@ -143,12 +143,12 @@ RSpec.describe Trane::Controller::ErrorHandler do
           controller.send(:_trane_handle_error, exception)
         }.to raise_error(MyApp::SpecificRecordNotFound, "subclass miss")
       ensure
-        described_class.instance_variable_set(:@rails_reserved_classes, nil)
+        described_class.instance_variable_set(:@rails_reserved_names, nil)
       end
     end
 
     it "Trane registry match wins over the Rails-reserved re-raise path" do
-      described_class.instance_variable_set(:@rails_reserved_classes, nil)
+      described_class.instance_variable_set(:@rails_reserved_names, nil)
       stub_const("ActiveRecord::RecordNotFound", Class.new(StandardError))
       stub_const("UserNotFound", Class.new(ActiveRecord::RecordNotFound))
       fake_wrapper = double("ExceptionWrapper", rescue_responses: { "ActiveRecord::RecordNotFound" => :not_found })
@@ -164,12 +164,12 @@ RSpec.describe Trane::Controller::ErrorHandler do
         expect(controller.rendered[:status]).to eq(404)
         expect(controller.rendered[:json][:errors][0][:key]).to eq("UserNotFound")
       ensure
-        described_class.instance_variable_set(:@rails_reserved_classes, nil)
+        described_class.instance_variable_set(:@rails_reserved_names, nil)
       end
     end
 
     it "routes non-reserved unregistered StandardError to _trane_unhandled_error" do
-      described_class.instance_variable_set(:@rails_reserved_classes, nil)
+      described_class.instance_variable_set(:@rails_reserved_names, nil)
       stub_const("MyApp::WeirdError", Class.new(StandardError))
       fake_wrapper = double("ExceptionWrapper", rescue_responses: { "ActiveRecord::RecordNotFound" => :not_found })
       stub_const("ActionDispatch::ExceptionWrapper", fake_wrapper)
@@ -182,12 +182,36 @@ RSpec.describe Trane::Controller::ErrorHandler do
 
         expect(unhandled_called).to be true
       ensure
-        described_class.instance_variable_set(:@rails_reserved_classes, nil)
+        described_class.instance_variable_set(:@rails_reserved_names, nil)
+      end
+    end
+
+    it "keeps recognizing a Rails-reserved exception after a Zeitwerk-style reload" do
+      described_class.instance_variable_set(:@rails_reserved_names, nil)
+      stub_const("MyApp::CustomError", Class.new(StandardError))
+      fake_wrapper = double("ExceptionWrapper", rescue_responses: { "MyApp::CustomError" => :not_found })
+      stub_const("ActionDispatch::ExceptionWrapper", fake_wrapper)
+
+      begin
+        # First error memoizes the reserved list with the pre-reload class loaded.
+        expect {
+          controller.send(:_trane_handle_error, MyApp::CustomError.new("before reload"))
+        }.to raise_error(MyApp::CustomError, "before reload")
+
+        # Simulate a Zeitwerk reload: same constant name, brand-new Class object.
+        reloaded = Class.new(StandardError)
+        stub_const("MyApp::CustomError", reloaded)
+
+        expect {
+          controller.send(:_trane_handle_error, reloaded.new("after reload"))
+        }.to raise_error(reloaded, "after reload")
+      ensure
+        described_class.instance_variable_set(:@rails_reserved_names, nil)
       end
     end
 
     it "returns empty reserved list and falls back to unhandled when ActionDispatch is not loaded" do
-      described_class.instance_variable_set(:@rails_reserved_classes, nil)
+      described_class.instance_variable_set(:@rails_reserved_names, nil)
       hide_const("ActionDispatch::ExceptionWrapper")
 
       stub_const("MyApp::SomeError", Class.new(StandardError))
@@ -199,9 +223,9 @@ RSpec.describe Trane::Controller::ErrorHandler do
         controller.send(:_trane_handle_error, MyApp::SomeError.new("no rails"))
 
         expect(unhandled_called).to be true
-        expect(described_class.rails_reserved_classes).to eq([])
+        expect(described_class.rails_reserved_names).to eq(Set.new)
       ensure
-        described_class.instance_variable_set(:@rails_reserved_classes, nil)
+        described_class.instance_variable_set(:@rails_reserved_names, nil)
       end
     end
   end

@@ -83,14 +83,31 @@ RSpec.describe Trane::Registry do
 
     it "clears the thread-local builder after the block completes" do
       described_class.replace! { |_b| }
-      expect(Thread.current.thread_variable_get(:trane_active_builder)).to be_nil
+      builders = Thread.current.thread_variable_get(Trane::Registry::Instance::ACTIVE_BUILDERS_KEY)
+      expect(builders || {}).to be_empty
     end
 
     it "clears the thread-local builder when the block raises" do
       expect {
         described_class.replace! { |_b| raise "boom" }
       }.to raise_error("boom")
-      expect(Thread.current.thread_variable_get(:trane_active_builder)).to be_nil
+      builders = Thread.current.thread_variable_get(Trane::Registry::Instance::ACTIVE_BUILDERS_KEY)
+      expect(builders || {}).to be_empty
+    end
+  end
+
+  describe "thread-local builder table hygiene" do
+    it "does not leave per-instance thread variables or dynamic symbols behind" do
+      20.times do
+        instance = Trane::Registry::Instance.new
+        instance.replace! { |_b| }
+      end
+
+      per_instance_keys = Thread.current.thread_variables.grep(/\Atrane_active_builder_\d+\z/)
+      expect(per_instance_keys).to be_empty
+
+      builders = Thread.current.thread_variable_get(Trane::Registry::Instance::ACTIVE_BUILDERS_KEY)
+      expect(builders || {}).to be_empty
     end
   end
 
@@ -209,7 +226,7 @@ RSpec.describe Trane::Registry do
       described_class.replace! do |_b|
         t = Thread.new do
           observed_in_other_thread =
-            Thread.current.thread_variable_get(:trane_active_builder)
+            Thread.current.thread_variable_get(Trane::Registry::Instance::ACTIVE_BUILDERS_KEY)
         end
         t.join
       end
