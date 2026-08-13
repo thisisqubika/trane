@@ -19,7 +19,7 @@ module Trane
       def initialize(routes, service_name:)
         @routes       = routes
         @service_name = service_name
-        @registry     = Trane.current_hooks.registry
+        @registry     = Trane.registry
       end
 
       def to_h

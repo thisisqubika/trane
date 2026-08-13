@@ -9,9 +9,8 @@ module Trane
 
     attr_reader :strict_mode
 
-    # Returns the current application's Configuration instance via the
-    # Trane shim. Existing call sites (Trane::Configuration.instance.X)
-    # continue to work after this refactor.
+    # Returns the process-level Configuration instance via the Trane shim.
+    # Existing call sites (Trane::Configuration.instance.X) continue to work.
     def self.instance
       Trane.configuration
     end

@@ -1137,42 +1137,24 @@ is **frozen** — any further attempt to set `strict_mode`
 raises `FrozenError`. This guarantees running requests observe a consistent
 configuration in multi-threaded environments (Puma, Falcon).
 
-To reset between tests, call `Trane.configuration.reset!` (or the equivalent
-shim `Trane::Configuration.instance.reset!`) — this clears values along with
-the frozen flag.
+To reset between tests, call `Trane.reset!` — it empties the registry, clears
+the configuration (values and frozen flag), and invalidates the docs cache in
+one call. `Trane.configuration.reset!` (or the shim
+`Trane::Configuration.instance.reset!`) is still available to reset only the
+configuration.
 
-### Multi-application support
+### Process-level state
 
-Trane stores its registry and configuration per `Rails::Application` instance,
-so two Rails applications running in the same Ruby process maintain isolated
-contracts. Each application gets its own registry (operations, representations,
-errors) and configuration (strict\_mode).
+Trane keeps a single registry (operations, representations, errors) and a
+single configuration per Ruby process, following the standard Rails model of
+one application per process. Running multiple `Rails::Application` instances
+in one process is not supported.
 
-The public Trane DSL (`Trane.operation`, `Trane.representation`, `Trane.errors`,
-`Trane.configure`) always routes to whichever application is currently active —
-typically `Rails.application`. For single-app deployments this is automatic and
-requires no changes.
-
-For scripts, rake tasks, or specs that need to address a specific application
-explicitly, use the block helper:
-
-```ruby
-Trane.with_application(App1::Application.instance) do
-  Trane.operation :foo do
-    # registers into App1's registry only
-  end
-end
-```
-
-#### Limitations
-
-- Trane relies on the `Rails.application` global pointer for the
-  current-application lookup. In multi-app deployments the host is responsible
-  for swapping `Rails.application` at request boundary (the standard Rails
-  pattern). Trane does not provide per-request app routing middleware.
-- The docs cache (`Trane::Docs::Cache`) is currently process-global; for
-  single-app deployments this is correct, but multi-app docs serving from one
-  process is not yet supported (future work).
+The public DSL (`Trane.operation`, `Trane.representation`, `Trane.errors`,
+`Trane.configure`) and the lookup helpers (`Trane.registry`,
+`Trane.configuration`) all address that process-level state. Registrations
+made before Rails boots (e.g. in unit specs that never load Rails) land in
+the same registry the booted application uses.
 
 #### Backwards compatibility
 
@@ -1183,14 +1165,7 @@ Trane::Registry.operations           # same as Trane.registry.operations
 Trane::Configuration.instance.reset! # same as Trane.configuration.reset!
 ```
 
-Both forms delegate to the current application's hooks.
-
-Note that `Trane::Configuration.instance` returns the **current** Rails
-application's Configuration — so its return value depends on which Rails
-application is active (or which `with_application` block is in scope).
-This is intentional and consistent with the per-application scoping
-model. In a single-app process the value never changes, matching
-pre-refactor behaviour.
+Both forms delegate to the process-level state.
 
 ---
 
