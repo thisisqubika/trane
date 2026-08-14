@@ -11,7 +11,8 @@ module Trane
     # Files there are DSL declarations (Trane.operation, Trane.representation,
     # Trane.errors) that do not define Ruby constants. Without this ignore,
     # Rails' eager_load in production would crash with
-    # "expected file ... to define constant ..." — see README "Autoloading note".
+    # "expected file ... to define constant ..." — see the "Autoloading note"
+    # in docs/wiki/Configuration.md.
     #
     # Hosts override the paths via `config.trane.contracts_paths = [...]` in
     # `config/application.rb` (NOT in config/initializers/trane.rb — too late).
