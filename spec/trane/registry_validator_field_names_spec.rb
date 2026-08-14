@@ -15,17 +15,19 @@ RSpec.describe Trane::Registry::Instance do
 
 
   describe "#validator_field_names_for" do
-    it "returns the same Array identity on repeated calls" do
+    it "returns the same Set identity on repeated calls" do
       arr1 = instance.validator_field_names_for(fields_a)
       arr2 = instance.validator_field_names_for(fields_a)
       expect(arr1).to be(arr2)
     end
 
-    it "returns a frozen Array" do
-      expect(instance.validator_field_names_for(fields_a).frozen?).to be true
+    it "returns a frozen Set" do
+      names = instance.validator_field_names_for(fields_a)
+      expect(names).to be_a(Set)
+      expect(names.frozen?).to be true
     end
 
-    it "returns distinct Arrays for different fields collections" do
+    it "returns distinct Sets for different fields collections" do
       arr_a = instance.validator_field_names_for(fields_a)
       arr_b = instance.validator_field_names_for(fields_b)
       expect(arr_a).not_to be(arr_b)
@@ -33,7 +35,7 @@ RSpec.describe Trane::Registry::Instance do
 
     it "includes extra: true fields" do
       arr = instance.validator_field_names_for(fields_a)
-      expect(arr).to eq(%i[id name nickname])
+      expect(arr).to eq(Set[:id, :name, :nickname])
     end
 
     it "invalidates the cache on replace!" do

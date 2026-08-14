@@ -253,18 +253,22 @@ module Trane
         built
       end
 
-      # Cached frozen Array of all field names for a given fields collection.
+      # Cached frozen Set of all field names for a given fields collection.
       # Used by ContractValidator to detect undeclared keys without per-request
-      # allocation. Same lifecycle / invalidation / INVARIANT (snapshot-owned
-      # `fields` only) and MAX_CACHE_ENTRIES bound as @compiled_serializers.
+      # allocation. A Set (not an Array) because the consumer does one
+      # membership test per serialized key: with F fields that is O(F) total
+      # instead of the O(F^2) an Array scan would cost — measurable on every
+      # production response, where the validator runs in :log mode.
+      # Same lifecycle / invalidation / INVARIANT (snapshot-owned `fields`
+      # only) and MAX_CACHE_ENTRIES bound as @compiled_serializers.
       #
       # @param fields [Array<Trane::FieldNode>] frozen fields array
-      # @return [Array<Symbol>] frozen Array of field names
+      # @return [Set<Symbol>] frozen Set of field names
       def validator_field_names_for(fields)
         cached = @validator_field_names[fields.object_id]
         return cached if cached
 
-        built = fields.map(&:name).freeze
+        built = Set.new(fields.map(&:name)).freeze
         @validator_field_names[fields.object_id] = built if @validator_field_names.size < MAX_CACHE_ENTRIES
         built
       end
