@@ -17,11 +17,19 @@ module Trane
       private
 
       def serve_json
-        [ 200, { "content-type" => "application/json; charset=utf-8" }, [ Cache.json ] ]
+        [ 200, response_headers("application/json; charset=utf-8"), [ Cache.json ] ]
       end
 
       def serve_html
-        [ 200, { "content-type" => "text/html; charset=utf-8" }, [ Cache.html ] ]
+        [ 200, response_headers("text/html; charset=utf-8"), [ Cache.html ] ]
+      end
+
+      # nosniff keeps browsers from second-guessing the declared MIME type.
+      def response_headers(content_type)
+        {
+          "content-type"           => content_type,
+          "x-content-type-options" => "nosniff"
+        }
       end
     end
   end

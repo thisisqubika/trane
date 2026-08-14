@@ -7,6 +7,10 @@ module Trane
     # `config.trane.contracts_paths` in `config/application.rb`.
     DEFAULT_CONTRACTS_PATHS = [ "app/api_contract" ].freeze
 
+    # Valid modes for on_missing_operation (what `render contract:` does when
+    # the route did not declare `contract: { operation: ... }`).
+    ON_MISSING_OPERATION_MODES = %i[raise log fallback].freeze
+
     attr_reader :strict_mode
 
     # Returns the process-level Configuration instance via the Trane shim.
@@ -16,9 +20,10 @@ module Trane
     end
 
     def initialize
-      @strict_mode     = nil
-      @contracts_paths = nil
-      @frozen          = false
+      @strict_mode          = nil
+      @contracts_paths      = nil
+      @on_missing_operation = nil
+      @frozen               = false
     end
 
     # Marks the configuration as frozen. Subsequent setter calls raise
@@ -36,6 +41,28 @@ module Trane
     def strict_mode=(value)
       raise FrozenError, "Trane::Configuration is frozen; cannot modify strict_mode after boot" if @frozen
       @strict_mode = value
+    end
+
+    # What `render contract:` does when the route did not declare
+    # `contract: { operation: ... }` (so no contract can be resolved):
+    #
+    #   :raise    — fail loud with Trane::Error (default). Without a contract
+    #               the field filtering cannot run, and serving the data
+    #               unserialized would expose every attribute of the object.
+    #   :log      — serve the data unserialized, logging a warning per request.
+    #   :fallback — serve the data unserialized, silently.
+    def on_missing_operation
+      @on_missing_operation || :raise
+    end
+
+    def on_missing_operation=(value)
+      raise FrozenError, "Trane::Configuration is frozen; cannot modify on_missing_operation after boot" if @frozen
+      unless ON_MISSING_OPERATION_MODES.include?(value)
+        raise Trane::Error,
+              "on_missing_operation must be one of #{ON_MISSING_OPERATION_MODES.map(&:inspect).join(', ')} " \
+              "(got #{value.inspect})"
+      end
+      @on_missing_operation = value
     end
 
     # Returns the effective strict mode for the current environment.
@@ -82,9 +109,10 @@ module Trane
     end
 
     def reset!
-      @strict_mode     = nil
-      @contracts_paths = nil
-      @frozen          = false
+      @strict_mode          = nil
+      @contracts_paths      = nil
+      @on_missing_operation = nil
+      @frozen               = false
     end
   end
 end

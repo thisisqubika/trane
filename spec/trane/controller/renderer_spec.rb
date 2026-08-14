@@ -54,6 +54,7 @@ RSpec.describe Trane::Controller::Renderer do
   end
 
   it "does not mutate the caller's options hash" do
+    Trane.configure { |c| c.on_missing_operation = :fallback }
     parent = Class.new do
       def render(_options = nil, _extra = {}, &_blk); end
     end
@@ -68,5 +69,58 @@ RSpec.describe Trane::Controller::Renderer do
 
     expect(options).to have_key(:contract)
     expect(options).to have_key(:status)
+  end
+
+  describe "missing route contract (on_missing_operation)" do
+    def build_controller
+      parent = Class.new do
+        attr_reader :super_options
+        def render(options = nil, _extra = {}, &_blk)
+          @super_options = options
+        end
+      end
+      Class.new(parent) do
+        def request; Struct.new(:path_parameters).new({ _trane_operation: nil }); end
+        def params; {}; end
+        include Trane::Controller::Renderer
+      end.new
+    end
+
+    it "raises by default instead of serving unserialized data" do
+      controller = build_controller
+
+      expect {
+        controller.render(contract: { user: { id: 1, password_digest: "secret" } })
+      }.to raise_error(Trane::Error, /did not declare a contract/)
+      expect(controller.super_options).to be_nil
+    end
+
+    it "logs a warning and serves unserialized data in :log mode" do
+      Trane.configure { |c| c.on_missing_operation = :log }
+      require "logger"
+      warnings = []
+      logger   = instance_double(Logger)
+      allow(logger).to receive(:warn) { |msg| warnings << msg }
+      fake_rails = Module.new
+      fake_rails.define_singleton_method(:logger) { logger }
+      stub_const("Rails", fake_rails)
+      controller = build_controller
+
+      controller.render(contract: { user: { id: 1 } }, status: :ok)
+
+      expect(warnings.join).to match(/\[Trane\].*without contract metadata/)
+      expect(controller.super_options).to eq(json: { user: { id: 1 } }, status: :ok)
+    end
+
+    it "serves unserialized data silently in :fallback mode" do
+      Trane.configure { |c| c.on_missing_operation = :fallback }
+      controller = build_controller
+
+      expect {
+        controller.render(contract: { user: { id: 1 } }, status: :ok)
+      }.not_to output.to_stderr
+
+      expect(controller.super_options).to eq(json: { user: { id: 1 } }, status: :ok)
+    end
   end
 end

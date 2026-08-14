@@ -83,6 +83,22 @@ RSpec.describe Trane::Controller::ErrorHandler do
       expect(controller.rendered[:json][:errors][0][:key]).to eq("WidgetNotFound")
     end
 
+    it "does not match an unrelated exception by short name against an FQDN registration" do
+      stub_const("Errors::UserNotFound", Class.new(StandardError))
+      stub_const("SomeGem::UserNotFound", Class.new(StandardError))
+      Trane.errors do
+        error "Errors::UserNotFound", status_code: 404, description: "User not found"
+      end
+
+      unhandled_called = false
+      controller_class.define_method(:_trane_unhandled_error) { |_e| unhandled_called = true }
+
+      controller.send(:_trane_handle_error, SomeGem::UserNotFound.new("internal gem detail"))
+
+      expect(unhandled_called).to be true
+      expect(controller.rendered).to be_nil
+    end
+
     it "calls _trane_unhandled_error when neither FQDN nor short name is registered" do
       stub_const("Totally::Unknown::Error", Class.new(StandardError))
 
@@ -207,6 +223,36 @@ RSpec.describe Trane::Controller::ErrorHandler do
         }.to raise_error(reloaded, "after reload")
       ensure
         described_class.instance_variable_set(:@rails_reserved_names, nil)
+      end
+    end
+
+    describe "_trane_unhandled_error environment gating" do
+      def stub_rails_env(local:, production:)
+        stub_const("Rails", double("Rails", env: double("env", local?: local, production?: production)))
+      end
+
+      it "includes class and message only in local environments (development/test)" do
+        stub_rails_env(local: true, production: false)
+
+        controller.send(:_trane_unhandled_error, RuntimeError.new("debug detail"))
+
+        expect(controller.rendered[:json][:errors][0][:message]).to eq("RuntimeError: debug detail")
+      end
+
+      it "returns the generic message in production" do
+        stub_rails_env(local: false, production: true)
+
+        controller.send(:_trane_unhandled_error, RuntimeError.new("sensitive detail"))
+
+        expect(controller.rendered[:json][:errors][0][:message]).to eq("An unexpected error occurred")
+      end
+
+      it "returns the generic message in custom non-local environments (staging/uat)" do
+        stub_rails_env(local: false, production: false)
+
+        controller.send(:_trane_unhandled_error, RuntimeError.new("SELECT * FROM users -- sensitive"))
+
+        expect(controller.rendered[:json][:errors][0][:message]).to eq("An unexpected error occurred")
       end
     end
 
