@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/trane-logo.png" width="160" alt="Trane logo">
+  <img src="docs/trane-logo.png" width="380" alt="Trane logo">
 </p>
 
 # Trane
