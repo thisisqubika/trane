@@ -1003,6 +1003,12 @@ Strict validation checks that serialized responses match the declared contract. 
 | `:log` | Logs all violations via `Rails.logger.warn`. Response is still sent. |
 | `:ignore` | Skips validation entirely. |
 
+**Operational note on `:log`:** violations are logged once per response, with no
+deduplication or rate-limiting — a broken contract on a high-traffic endpoint
+logs a multi-line warning for every request until it is fixed. If that volume
+is a concern, rely on your log pipeline's rate-limiting/alerting rather than
+silencing Trane (`:ignore` also disables detection).
+
 ### Configuration
 
 ```ruby

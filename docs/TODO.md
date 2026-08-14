@@ -3,8 +3,8 @@ TODO vara v1
 2. @trane.gemspec revisa que las dependencias sean las adecuadas, que este completo OK
 3. Revisar el Gemfile y Gemfile.lock OK
 4. revisar CI. Matriz de versiones de rails. matriz de versiones de ruby. Esta bien el enfoque del directorio '/gemfiles' ? rubocop y tests en todas las ramas
-
 8. revisa posibles memory leaks. agregar alguna herramienta si existe para validarlo. OK (ver docs/handoff-memory-leaks.md, spec/trane/memory_regression_spec.rb)
+
 5. revisa codigo muerto
 7. revisa vulnerabilidades de seguridad. Por ejemplo verifica no loguear datos sensibles.
 10. trane remote

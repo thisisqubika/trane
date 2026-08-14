@@ -135,6 +135,29 @@ RSpec.describe Trane::Serializer do
       result = serializer.serialize({ items: nil })
       expect(result[:items]).to be_nil
     end
+
+    # The two examples below pin the semantics of the bare-array branch
+    # (type: :array without of:/children): the caller's collection is never
+    # aliased into the result, and any Enumerable is normalized to an Array
+    # (JSON.generate cannot serialize a Set or a lazy enumerator).
+    it "returns a fresh Array (not the caller's object) for a bare array field" do
+      response_def = build_response(200) { field :ids, type: :array }
+      serializer = described_class.new(response_def, Trane::Registry)
+      ids = [ 1, 2, 3 ]
+
+      result = serializer.serialize({ ids: ids })
+      expect(result[:ids]).to eq([ 1, 2, 3 ])
+      expect(result[:ids]).not_to be(ids)
+    end
+
+    it "normalizes a non-Array Enumerable to an Array for a bare array field" do
+      response_def = build_response(200) { field :ids, type: :array }
+      serializer = described_class.new(response_def, Trane::Registry)
+
+      result = serializer.serialize({ ids: Set[1, 2, 3] })
+      expect(result[:ids]).to be_an(Array)
+      expect(result[:ids]).to contain_exactly(1, 2, 3)
+    end
   end
 
   describe "nested representations" do
