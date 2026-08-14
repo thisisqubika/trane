@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/trane-logo.png" width="160" alt="Trane logo">
+</p>
+
 # Trane
 
 [![CI](https://github.com/thisisqubika/trane/actions/workflows/ci.yml/badge.svg)](https://github.com/thisisqubika/trane/actions/workflows/ci.yml)
