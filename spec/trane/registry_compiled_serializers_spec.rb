@@ -104,7 +104,7 @@ RSpec.describe Trane::Registry::Instance do
       end
 
       expect(instance.instance_variable_get(:@validator_field_names).size).to be <= 2
-      expect(names.last).to eq([ :field_3 ])
+      expect(names.last).to eq(Set[:field_3])
     end
 
     it "stops caching declared field names past MAX_CACHE_ENTRIES but keeps returning correct ones" do
