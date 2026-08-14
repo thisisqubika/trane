@@ -75,6 +75,38 @@ RSpec.describe Trane::Configuration do
     end
   end
 
+  describe "#on_missing_operation" do
+    before { described_class.instance.reset! }
+
+    it "defaults to :raise" do
+      expect(config.on_missing_operation).to eq(:raise)
+    end
+
+    it "accepts :raise, :log, and :fallback" do
+      %i[raise log fallback].each do |mode|
+        config.on_missing_operation = mode
+        expect(config.on_missing_operation).to eq(mode)
+      end
+    end
+
+    it "rejects unknown modes with an actionable error" do
+      expect { config.on_missing_operation = :silent }
+        .to raise_error(Trane::Error, /on_missing_operation must be one of/)
+    end
+
+    it "raises FrozenError after freeze!" do
+      config.freeze!
+      expect { config.on_missing_operation = :log }
+        .to raise_error(FrozenError, /Trane::Configuration is frozen/)
+    end
+
+    it "reset! restores the :raise default" do
+      config.on_missing_operation = :fallback
+      config.reset!
+      expect(config.on_missing_operation).to eq(:raise)
+    end
+  end
+
   describe "freeze behavior" do
     before { described_class.instance.reset! }
 

@@ -165,7 +165,8 @@ Configure Trane in an initializer:
 ```ruby
 # config/initializers/trane.rb
 Trane.configure do |config|
-  config.strict_mode = nil         # nil (auto-detect), :raise, :log, or :ignore
+  config.strict_mode          = nil     # nil (auto-detect), :raise, :log, or :ignore
+  config.on_missing_operation = :raise  # :raise, :log, or :fallback
 end
 ```
 
@@ -174,6 +175,7 @@ end
 | Option | Default | Description |
 |---|---|---|
 | `strict_mode` | `nil` | Controls response contract validation behavior. |
+| `on_missing_operation` | `:raise` | What `render contract:` does when the route declared no `contract:` — see [Controllers without contracts](#controllers-without-contracts). |
 
 The API name is **not** configurable. The docs descriptor publishes
 `Rails.application.name` as `service.name` (`SungaDemo::Application` →
@@ -609,6 +611,9 @@ end
 
 The key `:UserNotFound` matches the class `UserNotFound`. Namespaced exceptions also work:
 - If registered by FQDN (e.g., `"MyApp::UserNotFound"`), the FQDN must match exactly.
+  An unrelated exception from another namespace with the same demodulized name
+  (`SomeGem::UserNotFound`) does **not** match — it falls through to the
+  generic 500 path.
 - If registered by short name (e.g., `:UserNotFound`), any class whose last name segment is `"UserNotFound"` will match.
 
 ### Error response format
@@ -628,12 +633,24 @@ All error responses follow this structure:
 
 The `message` field is populated from the exception's `.message` method.
 
+> **Security note:** a registered error's `message` reaches the client in
+> **every** environment, production included. Framework and library exception
+> messages are written for logs and may reveal internals — e.g.
+> `ActiveRecord::RecordNotFound#message` includes the model name and lookup
+> conditions. Prefer the pattern shown above (rescue the framework exception,
+> raise a domain error with a curated message); register framework exceptions
+> directly only when their messages are acceptable to expose.
+
 ### Unhandled errors
 
 Exceptions not in the registry return a 500 response:
 
-- **Development/Test**: includes the exception class and message for debugging.
-- **Production**: returns a generic `"An unexpected error occurred"` message.
+- **Development/Test** (`Rails.env.local?`): includes the exception class and message for debugging.
+- **Any other environment** (production, staging, uat, ...): returns a generic
+  `"An unexpected error occurred"` message. Custom environments are protected
+  by default — exception messages can carry SQL, record values, or internal
+  hostnames, and this handler renders before Rails' exception middleware, so
+  `consider_all_requests_local` cannot cover these responses.
 
 ---
 
@@ -740,7 +757,21 @@ end
 
 ### Controllers without contracts
 
-If a route does not have `_trane_operation` in its defaults, `render contract:` falls back to a plain `render json:` with no serialization.
+If a route does not have `contract: { operation: ... }` declared, no contract
+can be resolved for `render contract:` — and without a contract, the field
+filtering that contracts exist for cannot run. By default this **raises
+`Trane::Error`** with the exact fix in the message, instead of silently
+serving the unfiltered object (which would expose every attribute — a model's
+full `as_json` includes columns like `password_digest`).
+
+Hosts that want the old fallback behavior can opt in:
+
+```ruby
+Trane.configure do |config|
+  config.on_missing_operation = :log       # serve unserialized, warn per request
+  # config.on_missing_operation = :fallback # serve unserialized, silently
+end
+```
 
 ---
 
@@ -906,6 +937,14 @@ Clients include the `extra_attributes[]` query parameter with dot-notation paths
 GET /users/1?extra_attributes[]=user.nickname
 GET /users/1?extra_attributes[]=user.nickname&extra_attributes[]=user.bio
 ```
+
+> **Security note:** `extra: true` controls default payload visibility, **not
+> authorization**. Any client that can reach the endpoint can request any
+> declared extra field (and the docs endpoint advertises which fields are
+> extra). If a field requires authorization, enforce it in the controller —
+> e.g. filter `params[:extra_attributes]` in a `before_action`, or don't pass
+> the sensitive data to `render contract:` for unauthorized callers — or don't
+> declare the field in the contract at all.
 
 ### Path construction
 

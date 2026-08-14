@@ -28,6 +28,14 @@ module Trane
     # explicitly via `Trane.errors { error "ActiveRecord::RecordNotFound", ... }`;
     # the Trane lookup wins over the re-raise path.
     #
+    # SECURITY NOTE: a registered error's envelope carries the exception's
+    # runtime #message, in EVERY environment including production. Framework
+    # and library exception messages are written for logs and may reveal
+    # internals (model names, query conditions). Prefer the README's
+    # recommended pattern — rescue the framework exception and raise a
+    # domain error with a curated message — and register framework
+    # exceptions directly only when their messages are acceptable to expose.
+    #
     # PRODUCTION NOTE: re-raised exceptions surface via Rails' default
     # middleware. Keep `config.consider_all_requests_local = false` in
     # production so `ActionDispatch::ShowExceptions` serves the static
@@ -74,7 +82,7 @@ module Trane
         return _trane_unhandled_error(exception) unless klass.name
 
         index     = Trane.registry.errors_by_name
-        error_def = index[klass.name] || index[klass.name.rpartition("::").last]
+        error_def = index[klass.name] || _trane_short_name_match(index, klass)
 
         if error_def
           render(
@@ -88,6 +96,19 @@ module Trane
         end
       end
 
+      # Short-name fallback, restricted to errors REGISTERED by short name.
+      # The errors_by_name index also aliases FQDN registrations under their
+      # demodulized name (BootValidator resolves operation error_keys through
+      # those aliases), but matching here through an alias would let an
+      # unrelated exception (SomeGem::UserNotFound) hijack a registered
+      # Errors::UserNotFound and send a foreign library's message to the
+      # client — FQDN registrations must match exactly.
+      def _trane_short_name_match(index, klass)
+        short     = klass.name.rpartition("::").last
+        candidate = index[short]
+        candidate if candidate && candidate.key == short
+      end
+
       def _trane_rails_reserved?(klass)
         names = ErrorHandler.rails_reserved_names
         return false if names.empty?
@@ -95,8 +116,16 @@ module Trane
         klass.ancestors.any? { |ancestor| names.include?(ancestor.name) }
       end
 
+      # Verbose output is allow-listed to LOCAL environments (development
+      # and test, via Rails.env.local?) rather than deny-listed against
+      # production: a custom environment (staging, uat, preprod) must get
+      # the generic message by default. Exception messages are written by
+      # libraries that assume a log audience — they can carry SQL, record
+      # values, or internal hostnames — and this rescue_from renders before
+      # Rails' exception middleware, so the host's
+      # consider_all_requests_local setting cannot protect these responses.
       def _trane_unhandled_error(exception)
-        if defined?(Rails) && !Rails.env.production?
+        if defined?(Rails) && Rails.env.local?
           render(
             json: {
               errors: [ {

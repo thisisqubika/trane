@@ -2,6 +2,7 @@
 
 require "active_support/concern"
 require "json"
+require "rack/utils"
 
 module Trane
   module Controller
@@ -30,10 +31,26 @@ module Trane
 
           op_name = _trane_operation_name
           unless op_name
-            # Debug fallback: when the route did not inject _trane_operation,
-            # we cannot resolve a ResponseDefinition, so we cannot run the
-            # serializer or the as_json-skip optimization. Correctness > perf.
-            return super(json: contract_data, status: status, **extra_options, &block)
+            # The route did not inject _trane_operation, so no contract can
+            # be resolved and the field filtering cannot run. Serving the
+            # data unserialized would expose every attribute of the object
+            # (fail-open on the gem's only field filter), so the default is
+            # to fail loud, consistent with the unknown-operation and
+            # missing-response paths below. Hosts opt into the old behavior
+            # via config.on_missing_operation = :log / :fallback.
+            case Trane.configuration.on_missing_operation
+            when :fallback
+              return super(json: contract_data, status: status, **extra_options, &block)
+            when :log
+              _trane_log_missing_operation
+              return super(json: contract_data, status: status, **extra_options, &block)
+            else
+              raise Trane::Error,
+                    "Trane: render contract: was called but the route did not declare a contract, " \
+                    "so the response cannot be serialized or filtered. " \
+                    "Add `contract: { operation: :<operation_name> }` to this route in routes.rb, " \
+                    "or set `config.on_missing_operation` to :log or :fallback to serve the data unserialized."
+            end
           end
 
           registry = Trane.registry
@@ -74,6 +91,16 @@ module Trane
       def _trane_operation_name
         op = request.path_parameters[:_trane_operation]
         op&.to_sym
+      end
+
+      def _trane_log_missing_operation
+        message = "[Trane] render contract: called on a route without contract metadata; " \
+                  "serving unserialized JSON. Add `contract: { operation: ... }` to the route in routes.rb."
+        if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+          Rails.logger.warn(message)
+        else
+          warn(message)
+        end
       end
     end
   end

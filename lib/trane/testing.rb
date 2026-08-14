@@ -25,9 +25,10 @@ module Trane
 
       config = Trane.configuration
       snapshot = {
-        strict_mode:     config.instance_variable_get(:@strict_mode),
-        contracts_paths: config.instance_variable_get(:@contracts_paths),
-        frozen:          config.frozen_config?
+        strict_mode:          config.instance_variable_get(:@strict_mode),
+        contracts_paths:      config.instance_variable_get(:@contracts_paths),
+        on_missing_operation: config.instance_variable_get(:@on_missing_operation),
+        frozen:               config.frozen_config?
       }
 
       config.reset!
@@ -41,6 +42,7 @@ module Trane
       if config
         config.reset!
         config.strict_mode = snapshot[:strict_mode] unless snapshot[:strict_mode].nil?
+        config.on_missing_operation = snapshot[:on_missing_operation] unless snapshot[:on_missing_operation].nil?
         # Must run before freeze! below: _set_contracts_paths! raises
         # FrozenError once the config is frozen.
         config._set_contracts_paths!(snapshot[:contracts_paths]) unless snapshot[:contracts_paths].nil?
