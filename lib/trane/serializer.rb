@@ -99,7 +99,12 @@ module Trane
           end
         end
       else
-        value.map { |element| element }
+        # Fresh Array in both branches: never alias the caller's collection
+        # into the result, and normalize non-Array Enumerables (Set, lazy
+        # enumerators) into something JSON.generate can serialize. dup/to_a
+        # instead of an identity map: same semantics without dispatching a
+        # block per element (memcpy vs O(n) yields on large scalar arrays).
+        value.is_a?(Array) ? value.dup : value.to_a
       end
     end
 
