@@ -24,12 +24,7 @@ module Trane
       raise Trane::Error, "Trane::Testing.with_configuration requires Rails.application" unless defined?(Rails) && Rails.application
 
       config = Trane.configuration
-      snapshot = {
-        strict_mode:          config.instance_variable_get(:@strict_mode),
-        contracts_paths:      config.instance_variable_get(:@contracts_paths),
-        on_missing_operation: config.instance_variable_get(:@on_missing_operation),
-        frozen:               config.frozen_config?
-      }
+      snapshot = config._dump_state
 
       config.reset!
       attrs.each { |k, v| config.public_send(:"#{k}=", v) }
@@ -39,15 +34,7 @@ module Trane
     ensure
       # `config` is nil when the guard above raised; without this check the
       # ensure block would replace that error with a NoMethodError.
-      if config
-        config.reset!
-        config.strict_mode = snapshot[:strict_mode] unless snapshot[:strict_mode].nil?
-        config.on_missing_operation = snapshot[:on_missing_operation] unless snapshot[:on_missing_operation].nil?
-        # Must run before freeze! below: _set_contracts_paths! raises
-        # FrozenError once the config is frozen.
-        config._set_contracts_paths!(snapshot[:contracts_paths]) unless snapshot[:contracts_paths].nil?
-        config.freeze! if snapshot[:frozen]
-      end
+      config._restore_state!(snapshot) if config
     end
   end
 end

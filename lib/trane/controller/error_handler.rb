@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "active_support/concern"
-require "active_support/core_ext/string/inflections"
 
 module Trane
   module Controller

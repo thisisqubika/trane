@@ -47,7 +47,7 @@ module Trane
       end
 
       def freeze_and_build
-        errors_by_name = build_errors_by_name(@errors)
+        errors_by_name = self.class.build_errors_by_name(@errors)
         {
           operations:      @operations.freeze,
           representations: @representations.freeze,
@@ -56,11 +56,11 @@ module Trane
         }.freeze
       end
 
-      private
-
       # Build a frozen FQDN+short-name index over the given errors Hash.
       # Raises Trane::Error on short-name collision between two distinct FQDNs.
-      def build_errors_by_name(errors)
+      # A pure function of its input — class-level so Instance#register_error
+      # can rebuild the index without allocating a builder.
+      def self.build_errors_by_name(errors)
         return EMPTY_ERRORS_BY_NAME if errors.empty?
 
         index   = {}
@@ -157,9 +157,7 @@ module Trane
           active_builders[object_id] = builder
           yield builder
           @snapshot = builder.freeze_and_build
-          @compiled_serializers           = {}
-          @validator_field_names          = {}
-          @validator_declared_field_names = {}
+          clear_derived_caches
         ensure
           active_builders.delete(object_id)
         end
@@ -179,9 +177,7 @@ module Trane
         @replace_mutex.synchronize do
           s = @snapshot
           @snapshot = s.merge(operations: s[:operations].merge(definition.name => definition).freeze).freeze
-          @compiled_serializers           = {}
-          @validator_field_names          = {}
-          @validator_declared_field_names = {}
+          clear_derived_caches
         end
       end
 
@@ -192,9 +188,7 @@ module Trane
         @replace_mutex.synchronize do
           s = @snapshot
           @snapshot = s.merge(representations: s[:representations].merge(definition.name => definition).freeze).freeze
-          @compiled_serializers           = {}
-          @validator_field_names          = {}
-          @validator_declared_field_names = {}
+          clear_derived_caches
         end
       end
 
@@ -205,19 +199,15 @@ module Trane
         @replace_mutex.synchronize do
           s = @snapshot
           new_errors = s[:errors].merge(definition.key => definition).freeze
-          new_index  = SnapshotBuilder.allocate.send(:build_errors_by_name, new_errors)
+          new_index  = SnapshotBuilder.build_errors_by_name(new_errors)
           @snapshot = s.merge(errors: new_errors, errors_by_name: new_index).freeze
-          @compiled_serializers           = {}
-          @validator_field_names          = {}
-          @validator_declared_field_names = {}
+          clear_derived_caches
         end
       end
 
       def reset!
-        @snapshot                       = EMPTY_SNAPSHOT
-        @compiled_serializers           = {}
-        @validator_field_names          = {}
-        @validator_declared_field_names = {}
+        @snapshot = EMPTY_SNAPSHOT
+        clear_derived_caches
       end
 
       def validate!
@@ -291,6 +281,15 @@ module Trane
 
       private
 
+      # Drop every snapshot-derived cache. MUST be called on every path
+      # that replaces @snapshot — a stale entry here would be served keyed
+      # by an object_id belonging to the dead snapshot.
+      def clear_derived_caches
+        @compiled_serializers           = {}
+        @validator_field_names          = {}
+        @validator_declared_field_names = {}
+      end
+
       # The current thread's { instance object_id => builder } table,
       # created lazily (one Hash per thread that has ever run replace!).
       def active_builders
@@ -309,7 +308,6 @@ module Trane
       def representations; Trane.registry.representations; end
       def errors;          Trane.registry.errors; end
 
-      # Delegates to the current application's Registry::Instance.
       def errors_by_name;  Trane.registry.errors_by_name; end
 
       def replace!(&block); Trane.registry.replace!(&block); end

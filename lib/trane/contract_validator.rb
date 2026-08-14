@@ -19,11 +19,7 @@ module Trane
       when :raise
         raise ContractViolation, message
       when :log
-        if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
-          Rails.logger.warn(message)
-        else
-          warn(message)
-        end
+        Trane.log_warning(message)
       end
     end
 

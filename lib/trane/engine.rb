@@ -89,32 +89,17 @@ module Trane
     # mock compatibility in engine_to_prepare_error_context_spec.rb.
     # If you ever change them to bypass the shim, update that spec accordingly.
     #
-    # Loading order across all contracts_paths:
-    #   Phase 1 — every errors.rb from every base path (in declaration order).
-    #   Phase 2 — all other .rb files from every base path (sorted within each).
+    # Loading order lives in Trane::ContractLoader (shared with the
+    # integration test harness).
     config.to_prepare do
       if defined?(Rails.root) && Rails.root
         last_loaded_file = nil
 
         begin
           Trane::Registry.replace! do |_builder|
-            contracts_paths = Trane.configuration.contracts_paths
-
-            contracts_paths.each do |relative_path|
-              errors_file = Rails.root.join(relative_path, "errors.rb")
-              if errors_file.exist?
-                last_loaded_file = errors_file.to_s
-                load errors_file
-              end
-            end
-
-            contracts_paths.each do |relative_path|
-              errors_file = Rails.root.join(relative_path, "errors.rb").to_s
-              Dir[Rails.root.join(relative_path, "**/*.rb")].sort.each do |f|
-                next if f == errors_file
-                last_loaded_file = f
-                load f
-              end
+            Trane::ContractLoader.each_file(Rails.root, Trane.configuration.contracts_paths) do |file|
+              last_loaded_file = file
+              load file
             end
           end
         rescue Trane::Error
@@ -127,7 +112,7 @@ module Trane
                 cause: e
         end
 
-        if defined?(Trane::BootValidator) && Rails.application.config.eager_load
+        if Rails.application.config.eager_load
           begin
             Trane::Registry.validate!
           rescue Trane::Error
@@ -140,18 +125,16 @@ module Trane
           end
         end
 
-        if defined?(Trane::Docs::Cache)
-          # The host routes are NOT drawn during to_prepare: it runs before the
-          # Finisher's set_routes_reloader_hook in EVERY environment (confirmed
-          # empirically — the route set is empty here even under eager_load).
-          # Precomputing the docs now would build a snapshot from an empty route
-          # set, so every operation would fall back to method "GET" with an empty
-          # path. Instead we invalidate; the first post-boot read (inside a
-          # request, with the routes drawn) computes the correct snapshot lazily
-          # via Cache.ensure_snapshot. In development to_prepare also runs on each
-          # reload, so this keeps the cache fresh after contract/route changes.
-          Trane::Docs::Cache.invalidate!
-        end
+        # The host routes are NOT drawn during to_prepare: it runs before the
+        # Finisher's set_routes_reloader_hook in EVERY environment (confirmed
+        # empirically — the route set is empty here even under eager_load).
+        # Precomputing the docs now would build a snapshot from an empty route
+        # set, so every operation would fall back to method "GET" with an empty
+        # path. Instead we invalidate; the first post-boot read (inside a
+        # request, with the routes drawn) computes the correct snapshot lazily
+        # via Cache.ensure_snapshot. In development to_prepare also runs on each
+        # reload, so this keeps the cache fresh after contract/route changes.
+        Trane::Docs::Cache.invalidate!
       else
         Trane::Registry.reset!
       end
