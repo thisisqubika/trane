@@ -652,6 +652,14 @@ Exceptions not in the registry return a 500 response:
   hostnames, and this handler renders before Rails' exception middleware, so
   `consider_all_requests_local` cannot cover these responses.
 
+Before rendering the envelope, the exception is **reported and logged**:
+through `Rails.error.report(exception, handled: true, source: "trane")` (the
+`ActiveSupport::ErrorReporter` interface error trackers like Sentry subscribe
+to) and as a `Rails.logger.error` line with class, message, and backtrace.
+Without this, `rescue_from` would swallow the exception before Rails'
+exception-reporting middleware could see it, and production 500s would leave
+no trace in logs or error trackers.
+
 ---
 
 ## Controller Integration
@@ -1074,11 +1082,22 @@ Trane::ContractViolation: Trane contract violations:
   count: missing from response
   user.email: missing from response
   extra_field: undeclared field in response
+  user.name: composite Hash value in scalar field (declared type :string)
 ```
+
+Three violation kinds are detected: missing declared keys, undeclared keys,
+and **composite values in scalar leaf fields** — a Hash or Array where a
+scalar (`:string`, `:integer`, `:float`, `:boolean`, `:date`, `:datetime`)
+was declared. The last one catches the accidental over-exposure case where a
+whole object (e.g. a model's full `as_json`) is passed for a field that was
+meant to carry one value; the serializer emits leaf values verbatim, so
+without this check the entire object would reach the client. Scalar leaf
+values of the *wrong scalar type* (e.g. a String in an `:integer` field) are
+not flagged — types are documentation, only composites are rejected.
 
 ### Object type (passthrough)
 
-Fields with `:object` type and no block are never recursively validated. Their values are accepted as-is.
+Fields with `:object` type and no block are never recursively validated. Their values are accepted as-is (including Hashes — declare `:object` when a field intentionally carries free-form data).
 
 ---
 

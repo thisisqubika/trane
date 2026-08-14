@@ -32,6 +32,50 @@ RSpec.describe Trane::ContractValidator do
       end
     end
 
+    context "with a composite value in a scalar leaf field" do
+      it "raises ContractViolation for a Hash in a :string field" do
+        rep_result = { id: 1, name: { password_digest: "secret", role: "admin" } }
+        result = { user: rep_result, count: 5 }
+        expect {
+          described_class.validate_response!(response_def, result, Trane::Registry, mode: :raise)
+        }.to raise_error(Trane::ContractViolation, /user\.name: composite Hash value in scalar field \(declared type :string\)/)
+      end
+
+      it "raises ContractViolation for an Array in an :integer field" do
+        result = { user: { id: 1, name: "Alice" }, count: [ 1, 2, 3 ] }
+        expect {
+          described_class.validate_response!(response_def, result, Trane::Registry, mode: :raise)
+        }.to raise_error(Trane::ContractViolation, /count: composite Array value in scalar field \(declared type :integer\)/)
+      end
+
+      it "does not flag a Hash in an :object field" do
+        resp = build_response(200) do
+          field :metadata, type: :object
+        end
+        result = { metadata: { anything: { nested: true } } }
+        expect {
+          described_class.validate_response!(resp, result, Trane::Registry, mode: :raise)
+        }.not_to raise_error
+      end
+
+      it "does not flag a Hash in a representation-typed field" do
+        result = { user: { id: 1, name: "Alice" }, count: 5 }
+        expect {
+          described_class.validate_response!(response_def, result, Trane::Registry, mode: :raise)
+        }.not_to raise_error
+      end
+
+      it "does not flag an Array in a bare :array field" do
+        resp = build_response(200) do
+          field :ids, type: :array
+        end
+        result = { ids: [ 1, 2, 3 ] }
+        expect {
+          described_class.validate_response!(resp, result, Trane::Registry, mode: :raise)
+        }.not_to raise_error
+      end
+    end
+
     context "with a missing declared field" do
       it "raises ContractViolation" do
         result = { user: { id: 1, name: "Alice" } }
@@ -83,14 +127,12 @@ RSpec.describe Trane::ContractValidator do
 
         if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
           expect(Rails.logger).to receive(:warn).with(/Trane contract violations/)
+          described_class.validate_response!(response_def, result, Trane::Registry, mode: :log)
         else
           expect {
             described_class.validate_response!(response_def, result, Trane::Registry, mode: :log)
           }.to output(/Trane contract violations/).to_stderr
-          return
         end
-
-        described_class.validate_response!(response_def, result, Trane::Registry, mode: :log)
       end
     end
 
