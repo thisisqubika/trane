@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/trane-logo.png" width="380" alt="Trane logo">
+  <img src="https://raw.githubusercontent.com/thisisqubika/trane/main/docs/trane-logo.png" width="380" alt="Trane logo">
 </p>
 
 # Trane
@@ -123,7 +123,7 @@ end
 
 `GET /my-api/docs` serves the HTML documentation and `/my-api/docs.json` the
 machine-readable service definition. The docs expose your full API surface —
-see [securing the docs endpoint](docs/wiki/Documentation-Endpoints.md#securing-the-docs-endpoint)
+see [securing the docs endpoint](https://github.com/thisisqubika/trane/blob/main/docs/wiki/Documentation-Endpoints.md#securing-the-docs-endpoint)
 before mounting in production.
 
 ## Documentation
@@ -132,19 +132,19 @@ The full guides live in the wiki:
 
 | Guide | What it covers |
 |---|---|
-| [Configuration](docs/wiki/Configuration.md) | Options, contract file locations and loading order, lifecycle, testing helper |
-| [Representations](docs/wiki/Representations.md) | Fields, formats, arrays, references, passthrough |
-| [Operations](docs/wiki/Operations.md) | Request DSL (path/query/body), response DSL, error keys |
-| [Error Handling](docs/wiki/Error-Handling.md) | Error catalog, exception matching, response envelope, unhandled errors |
-| [Controller Integration](docs/wiki/Controller-Integration.md) | The mixins, `render contract:`, status mapping, raising errors |
-| [Routes](docs/wiki/Routes.md) | The `contract:` route keyword |
-| [Serialization](docs/wiki/Serialization.md) | Value extraction, nil handling, nesting |
-| [Extra Attributes](docs/wiki/Extra-Attributes.md) | Optional fields clients opt into per request |
-| [Validation](docs/wiki/Validation.md) | Strict response validation, boot-time checks, `trane:check` |
-| [Documentation Endpoints](docs/wiki/Documentation-Endpoints.md) | Mounting, securing, the Service Definition JSON |
-| [Field Types Reference](docs/wiki/Field-Types-Reference.md) | Every type, option, and declaration variant |
-| [Architecture](docs/wiki/Architecture.md) | Process-level state, concurrency model, legacy API |
-| [Complete Example](docs/wiki/Complete-Example.md) | A full CRUD example, end to end |
+| [Configuration](https://github.com/thisisqubika/trane/blob/main/docs/wiki/Configuration.md) | Options, contract file locations and loading order, lifecycle, testing helper |
+| [Representations](https://github.com/thisisqubika/trane/blob/main/docs/wiki/Representations.md) | Fields, formats, arrays, references, passthrough |
+| [Operations](https://github.com/thisisqubika/trane/blob/main/docs/wiki/Operations.md) | Request DSL (path/query/body), response DSL, error keys |
+| [Error Handling](https://github.com/thisisqubika/trane/blob/main/docs/wiki/Error-Handling.md) | Error catalog, exception matching, response envelope, unhandled errors |
+| [Controller Integration](https://github.com/thisisqubika/trane/blob/main/docs/wiki/Controller-Integration.md) | The mixins, `render contract:`, status mapping, raising errors |
+| [Routes](https://github.com/thisisqubika/trane/blob/main/docs/wiki/Routes.md) | The `contract:` route keyword |
+| [Serialization](https://github.com/thisisqubika/trane/blob/main/docs/wiki/Serialization.md) | Value extraction, nil handling, nesting |
+| [Extra Attributes](https://github.com/thisisqubika/trane/blob/main/docs/wiki/Extra-Attributes.md) | Optional fields clients opt into per request |
+| [Validation](https://github.com/thisisqubika/trane/blob/main/docs/wiki/Validation.md) | Strict response validation, boot-time checks, `trane:check` |
+| [Documentation Endpoints](https://github.com/thisisqubika/trane/blob/main/docs/wiki/Documentation-Endpoints.md) | Mounting, securing, the Service Definition JSON |
+| [Field Types Reference](https://github.com/thisisqubika/trane/blob/main/docs/wiki/Field-Types-Reference.md) | Every type, option, and declaration variant |
+| [Architecture](https://github.com/thisisqubika/trane/blob/main/docs/wiki/Architecture.md) | Process-level state, concurrency model, legacy API |
+| [Complete Example](https://github.com/thisisqubika/trane/blob/main/docs/wiki/Complete-Example.md) | A full CRUD example, end to end |
 
 ## License
 
