@@ -13,9 +13,18 @@ Gem::Specification.new do |spec|
                         "serialization via contract-based representations, captures errors globally, " \
                         "and publishes API documentation (HTML + JSON)."
   spec.license       = "MIT"
+  spec.homepage      = "https://github.com/thisisqubika/trane"
   spec.required_ruby_version = ">= 3.2.0"
 
-  spec.files = Dir["lib/**/*", "LICENSE.txt", "README.md"]
+  spec.metadata = {
+    "source_code_uri"       => "https://github.com/thisisqubika/trane",
+    "changelog_uri"         => "https://github.com/thisisqubika/trane/blob/main/CHANGELOG.md",
+    "bug_tracker_uri"       => "https://github.com/thisisqubika/trane/issues",
+    "documentation_uri"     => "https://github.com/thisisqubika/trane/tree/main/docs/wiki",
+    "rubygems_mfa_required" => "true"
+  }
+
+  spec.files = Dir["lib/**/*", "LICENSE.txt", "README.md", "CHANGELOG.md"]
   spec.require_paths = [ "lib" ]
 
   spec.add_dependency "railties",      ">= 7.2", "< 9"
