@@ -30,9 +30,9 @@ module Trane
     # SECURITY NOTE: a registered error's envelope carries the exception's
     # runtime #message, in EVERY environment including production. Framework
     # and library exception messages are written for logs and may reveal
-    # internals (model names, query conditions). Prefer the README's
-    # recommended pattern — rescue the framework exception and raise a
-    # domain error with a curated message — and register framework
+    # internals (model names, query conditions). Prefer the recommended
+    # pattern (docs/wiki/Error-Handling.md) — rescue the framework exception
+    # and raise a domain error with a curated message — and register framework
     # exceptions directly only when their messages are acceptable to expose.
     #
     # PRODUCTION NOTE: re-raised exceptions surface via Rails' default

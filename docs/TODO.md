@@ -4,11 +4,11 @@ TODO vara v1
 3. Revisar el Gemfile y Gemfile.lock OK
 4. revisar CI. Matriz de versiones de rails. matriz de versiones de ruby. Esta bien el enfoque del directorio '/gemfiles' ? rubocop y tests en todas las ramas
 8. revisa posibles memory leaks. agregar alguna herramienta si existe para validarlo. OK (ver docs/handoff-memory-leaks.md, spec/trane/memory_regression_spec.rb)
-
 7. revisa vulnerabilidades de seguridad. Por ejemplo verifica no loguear datos sensibles. OK (logs verificados limpios — solo metadata, nunca valores; 3 fixes fail-closed aplicados, ver commit "Fix security review findings")
 5. revisa codigo muerto OK (limpieza + refactors estructurales, ver commit "Remove dead code")
+
+9. Revisa el README.md de la gema. corregi el apartado de la instalación, quitando `path:`. Hacelo mas amigable al developer que esta integrando trane a su proyecto. No incluyas detalles del mantenimiento de la propia gema. Quita la parte de que no es posible configurar el nombre de la app. Reducí los ejemplos a la minima implementación y pasa todo el detalle de como usar la gema y aprovechar todas sus features a una wiki bien estructurada. OK (README ~160 líneas + wiki de 14 páginas en docs/wiki/, lista para migrar a la GitHub Wiki)
 10. trane remote
-9. Revisa el README.md de la gema. corregi el apartado de la instalación, quitando `path:`. Hacelo mas amigable al developer que esta integrando trane a su proyecto. No incluyas detalles del mantenimiento de la propia gema. Quita la parte de que no es posible configurar el nombre de la app. Reducí los ejemplos a la minima implementación y pasa todo el detalle de como usar la gema y aprovechar todas sus features a una wiki bien estructurada.
 6. crea un entorno devcontainer para uso local de desarrollo
 
 
