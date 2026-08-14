@@ -256,6 +256,41 @@ RSpec.describe Trane::Controller::ErrorHandler do
       end
     end
 
+    describe "_trane_unhandled_error reporting" do
+      it "reports the exception to Rails.error and logs it before rendering the generic envelope" do
+        reports = []
+        logs    = []
+        error_reporter = double("error_reporter")
+        allow(error_reporter).to receive(:report) { |ex, **kw| reports << [ ex, kw ] }
+        logger = double("logger")
+        allow(logger).to receive(:error) { |msg| logs << msg }
+
+        fake_rails = Module.new
+        fake_rails.define_singleton_method(:error)  { error_reporter }
+        fake_rails.define_singleton_method(:logger) { logger }
+        fake_rails.define_singleton_method(:env)    { Struct.new(:local?, :production?).new(false, true) }
+        stub_const("Rails", fake_rails)
+
+        exception = RuntimeError.new("boom during attack probing")
+        controller.send(:_trane_unhandled_error, exception)
+
+        expect(reports).to eq([ [ exception, { handled: true, source: "trane" } ] ])
+        expect(logs.join).to include("RuntimeError").and include("boom during attack probing")
+        expect(controller.rendered[:json][:errors][0][:message]).to eq("An unexpected error occurred")
+      end
+
+      it "still renders the envelope when Rails has no error reporter or logger" do
+        fake_rails = Module.new
+        fake_rails.define_singleton_method(:env) { Struct.new(:local?, :production?).new(false, true) }
+        stub_const("Rails", fake_rails)
+
+        expect {
+          controller.send(:_trane_unhandled_error, RuntimeError.new("boom"))
+        }.not_to raise_error
+        expect(controller.rendered[:json][:errors][0][:message]).to eq("An unexpected error occurred")
+      end
+    end
+
     it "returns empty reserved list and falls back to unhandled when ActionDispatch is not loaded" do
       described_class.instance_variable_set(:@rails_reserved_names, nil)
       hide_const("ActionDispatch::ExceptionWrapper")

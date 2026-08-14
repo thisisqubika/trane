@@ -96,6 +96,27 @@ module Trane
         end
       end
 
+      # rescue_from handles the exception BEFORE Rails' exception-reporting
+      # middleware can see it, so without this hook a 500 in production
+      # would leave no trace at all: no log line, no stacktrace, and no
+      # event in middleware-based error trackers. Report through
+      # Rails.error (the ErrorReporter interface trackers subscribe to)
+      # and write the class + message + backtrace to the log.
+      def _trane_report_unhandled(exception)
+        return unless defined?(Rails)
+
+        if Rails.respond_to?(:error) && Rails.error
+          Rails.error.report(exception, handled: true, source: "trane")
+        end
+
+        if Rails.respond_to?(:logger) && Rails.logger
+          Rails.logger.error(
+            "[Trane] unhandled #{exception.class}: #{exception.message}\n" \
+            "#{Array(exception.backtrace).first(20).join("\n")}"
+          )
+        end
+      end
+
       # Short-name fallback, restricted to errors REGISTERED by short name.
       # The errors_by_name index also aliases FQDN registrations under their
       # demodulized name (BootValidator resolves operation error_keys through
@@ -125,6 +146,8 @@ module Trane
       # Rails' exception middleware, so the host's
       # consider_all_requests_local setting cannot protect these responses.
       def _trane_unhandled_error(exception)
+        _trane_report_unhandled(exception)
+
         if defined?(Rails) && Rails.env.local?
           render(
             json: {
