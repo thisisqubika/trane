@@ -30,19 +30,8 @@ RSpec.configure do |config|
     end
     Trane::Configuration.instance.freeze!
     Trane::Registry.replace! do |_builder|
-      contracts_paths = Trane.configuration.contracts_paths
-
-      contracts_paths.each do |relative_path|
-        errors_file = Rails.root.join(relative_path, "errors.rb")
-        load errors_file if errors_file.exist?
-      end
-
-      contracts_paths.each do |relative_path|
-        errors_file = Rails.root.join(relative_path, "errors.rb").to_s
-        Dir[Rails.root.join(relative_path, "**/*.rb")].sort.each do |f|
-          next if f == errors_file
-          load f
-        end
+      Trane::ContractLoader.each_file(Rails.root, Trane.configuration.contracts_paths) do |file|
+        load file
       end
     end
   end

@@ -23,6 +23,7 @@ require_relative "trane/registry"
 require_relative "trane/serializer"
 require_relative "trane/extra_attributes_filter"
 require_relative "trane/boot_validator"
+require_relative "trane/contract_loader"
 require_relative "trane/route_validator"
 require_relative "trane/contract_validator"
 require_relative "trane/controller"
@@ -58,7 +59,7 @@ module Trane
   def self.reset!
     registry.reset!
     configuration.reset!
-    Docs::Cache.invalidate! if defined?(Docs::Cache)
+    Docs::Cache.invalidate!
     nil
   end
 
@@ -78,6 +79,17 @@ module Trane
     builder = ErrorsBuilder.new
     builder.instance_eval(&block)
     builder.definitions.each { |d| registry.register_error(d) }
+  end
+
+  # Logs a warning through Rails.logger when available, falling back to
+  # Kernel#warn (stderr) outside Rails. Single home for the guard chain so
+  # every warn-level message in the gem routes identically.
+  def self.log_warning(message)
+    if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+      Rails.logger.warn(message)
+    else
+      warn(message)
+    end
   end
 
   # Returns the closest spelling match for term among candidates, or nil

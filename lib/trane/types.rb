@@ -17,10 +17,6 @@ module Trane
 
     HTTP_STATUS_RANGE = (100..599).freeze
 
-    def self.primitive?(type)
-      type.nil? || PRIMITIVES.include?(type)
-    end
-
     def self.representation_reference?(type)
       !type.nil? && !PRIMITIVES.include?(type)
     end
@@ -34,8 +30,10 @@ module Trane
       when :float    then value.is_a?(Float)
       when :boolean  then value.is_a?(TrueClass) || value.is_a?(FalseClass)
       when :date     then value.is_a?(Date) && !value.is_a?(DateTime)
+      # !! keeps the return strictly boolean: `defined?` yields nil (not
+      # false) when TimeWithZone isn't loaded, and nil would leak out.
       when :datetime then value.is_a?(DateTime) || value.is_a?(Time) ||
-                          (defined?(ActiveSupport::TimeWithZone) && value.is_a?(ActiveSupport::TimeWithZone))
+                          (!!defined?(ActiveSupport::TimeWithZone) && value.is_a?(ActiveSupport::TimeWithZone))
       else false
       end
     end

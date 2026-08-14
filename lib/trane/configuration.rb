@@ -7,6 +7,9 @@ module Trane
     # `config.trane.contracts_paths` in `config/application.rb`.
     DEFAULT_CONTRACTS_PATHS = [ "app/api_contract" ].freeze
 
+    # Valid strict_mode values (nil is also accepted: auto-detect by env).
+    STRICT_MODES = %i[raise log ignore].freeze
+
     # Valid modes for on_missing_operation (what `render contract:` does when
     # the route did not declare `contract: { operation: ... }`).
     ON_MISSING_OPERATION_MODES = %i[raise log fallback].freeze
@@ -20,10 +23,7 @@ module Trane
     end
 
     def initialize
-      @strict_mode          = nil
-      @contracts_paths      = nil
-      @on_missing_operation = nil
-      @frozen               = false
+      reset!
     end
 
     # Marks the configuration as frozen. Subsequent setter calls raise
@@ -38,8 +38,16 @@ module Trane
       @frozen
     end
 
+    # Rejects unknown modes at assignment time: an unrecognized value would
+    # otherwise fall outside every consumer's case statement and silently
+    # disable contract validation (fail-open by typo).
     def strict_mode=(value)
       raise FrozenError, "Trane::Configuration is frozen; cannot modify strict_mode after boot" if @frozen
+      unless value.nil? || STRICT_MODES.include?(value)
+        raise Trane::Error,
+              "strict_mode must be nil (auto-detect) or one of " \
+              "#{STRICT_MODES.map(&:inspect).join(', ')} (got #{value.inspect})"
+      end
       @strict_mode = value
     end
 
@@ -113,6 +121,26 @@ module Trane
       @contracts_paths      = nil
       @on_missing_operation = nil
       @frozen               = false
+    end
+
+    # Internal — full state snapshot/restore for Trane::Testing.
+    # Lives here, next to the ivars it enumerates, so adding a new
+    # configuration attribute forces updating this list in the same file
+    # (instead of silently losing it across a with_configuration block).
+    def _dump_state
+      {
+        strict_mode:          @strict_mode,
+        contracts_paths:      @contracts_paths,
+        on_missing_operation: @on_missing_operation,
+        frozen:               @frozen
+      }
+    end
+
+    def _restore_state!(state)
+      @strict_mode          = state[:strict_mode]
+      @contracts_paths      = state[:contracts_paths]
+      @on_missing_operation = state[:on_missing_operation]
+      @frozen               = state[:frozen]
     end
   end
 end

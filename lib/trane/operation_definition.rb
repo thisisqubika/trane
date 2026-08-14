@@ -48,8 +48,6 @@ module Trane
 
   # Builder for the `request do ... end` block
   class RequestBuilder
-    attr_reader :params, :body_fields
-
     def initialize
       @params = []
       @body_fields = []
@@ -81,8 +79,6 @@ module Trane
 
   # Builder for the `response STATUS do ... end` block
   class ResponseBuilder < FieldBuilder
-    attr_reader :status
-
     def initialize(status)
       super()
       @status = status.to_i

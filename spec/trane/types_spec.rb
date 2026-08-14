@@ -1,41 +1,23 @@
 # frozen_string_literal: true
 
 RSpec.describe Trane::Types do
-  describe ".primitive?" do
-    it "returns true for nil" do
-      expect(described_class.primitive?(nil)).to be true
-    end
-
-    it "returns true for primitive types" do
-      %i[string integer float boolean date datetime object array].each do |type|
-        expect(described_class.primitive?(type)).to be(true), "Expected #{type} to be primitive"
-      end
-    end
-
-    it "treats :any as a representation reference (no longer primitive)" do
-      expect(described_class.primitive?(:any)).to be(false)
-      expect(described_class.representation_reference?(:any)).to be(true)
-    end
-
-    it "treats :dynamic as a representation reference (no longer primitive)" do
-      expect(described_class.primitive?(:dynamic)).to be(false)
-      expect(described_class.representation_reference?(:dynamic)).to be(true)
-    end
-
-    it "returns false for representation references" do
-      expect(described_class.primitive?(:user)).to be false
-      expect(described_class.primitive?(:car)).to be false
-    end
-  end
-
   describe ".representation_reference?" do
     it "returns false for nil" do
       expect(described_class.representation_reference?(nil)).to be false
     end
 
     it "returns false for primitive types" do
-      expect(described_class.representation_reference?(:string)).to be false
-      expect(described_class.representation_reference?(:integer)).to be false
+      %i[string integer float boolean date datetime object array].each do |type|
+        expect(described_class.representation_reference?(type)).to be(false), "Expected #{type} to be primitive"
+      end
+    end
+
+    it "treats :any as a representation reference (no longer primitive)" do
+      expect(described_class.representation_reference?(:any)).to be(true)
+    end
+
+    it "treats :dynamic as a representation reference (no longer primitive)" do
+      expect(described_class.representation_reference?(:dynamic)).to be(true)
     end
 
     it "returns true for non-primitive symbols" do

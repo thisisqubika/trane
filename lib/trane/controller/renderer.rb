@@ -94,13 +94,10 @@ module Trane
       end
 
       def _trane_log_missing_operation
-        message = "[Trane] render contract: called on a route without contract metadata; " \
-                  "serving unserialized JSON. Add `contract: { operation: ... }` to the route in routes.rb."
-        if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
-          Rails.logger.warn(message)
-        else
-          warn(message)
-        end
+        Trane.log_warning(
+          "[Trane] render contract: called on a route without contract metadata; " \
+          "serving unserialized JSON. Add `contract: { operation: ... }` to the route in routes.rb."
+        )
       end
     end
   end

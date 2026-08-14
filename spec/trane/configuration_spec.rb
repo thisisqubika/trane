@@ -75,6 +75,27 @@ RSpec.describe Trane::Configuration do
     end
   end
 
+  describe "#strict_mode= validation" do
+    before { described_class.instance.reset! }
+
+    it "accepts nil (auto-detect) and the three modes" do
+      [ nil, :raise, :log, :ignore ].each do |mode|
+        config.strict_mode = mode
+        expect(config.strict_mode).to eq(mode)
+      end
+    end
+
+    it "rejects unknown modes with an actionable error" do
+      expect { config.strict_mode = :warn }
+        .to raise_error(Trane::Error, /strict_mode must be nil \(auto-detect\) or one of/)
+    end
+
+    it "rejects String spellings of valid modes" do
+      expect { config.strict_mode = "log" }
+        .to raise_error(Trane::Error, /strict_mode must be nil/)
+    end
+  end
+
   describe "#on_missing_operation" do
     before { described_class.instance.reset! }
 

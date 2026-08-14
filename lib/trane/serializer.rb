@@ -21,7 +21,7 @@ module Trane
     def serialize(data, extra_attributes: ExtraAttributesFilter::EMPTY)
       result = serialize_fields(@response_definition.fields, data, extra_attributes: extra_attributes, prefix: "")
 
-      if @strict_mode != :ignore && defined?(Trane::ContractValidator)
+      if @strict_mode != :ignore
         ContractValidator.validate_response!(
           @response_definition, result, @registry, mode: @strict_mode
         )
@@ -120,7 +120,7 @@ module Trane
       when :raise
         raise ContractViolation, message
       when :log
-        log_warning(message)
+        Trane.log_warning(message)
       end
     end
 
@@ -128,14 +128,6 @@ module Trane
     # (extras gate, nested-rep recursion, or strict-mode violation) needs it.
     def build_path(prefix, leaf_sym)
       prefix.empty? ? leaf_sym.name : "#{prefix}.#{leaf_sym}"
-    end
-
-    def log_warning(message)
-      if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
-        Rails.logger.warn(message)
-      else
-        warn(message)
-      end
     end
 
     # Extract a value from data (supports both Hash and objects).

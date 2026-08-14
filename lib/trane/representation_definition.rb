@@ -12,8 +12,6 @@ module Trane
 
   # Builder for `Trane.representation :name do ... end`
   class RepresentationBuilder < FieldBuilder
-    attr_reader :name
-
     def initialize(name)
       super()
       @name = name.to_sym
