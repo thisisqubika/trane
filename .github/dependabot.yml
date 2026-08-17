@@ -1,0 +1,17 @@
+version: 2
+updates:
+  # Dev/test dependencies (the gemspec's runtime deps are intentionally
+  # wide ranges and are exercised by the gemfiles/ CI matrix instead).
+  - package-ecosystem: bundler
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      dev-dependencies:
+        patterns: ["*"]
+
+  # Action versions in .github/workflows/.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
