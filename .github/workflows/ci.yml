@@ -1,7 +1,10 @@
 name: CI
 
+# push is limited to main so PR branches run each check once (via the
+# pull_request event) instead of twice.
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -42,3 +45,19 @@ jobs:
           bundler-cache: true
       - name: Run RuboCop
         run: bundle exec rubocop
+
+  # Aggregate gate: branch protection requires this single check instead of
+  # naming every matrix cell, so growing the Ruby/Rails matrix never needs a
+  # ruleset update. if: always() makes it report a real failure (not a skip)
+  # when any dependency fails.
+  ci-ok:
+    name: CI OK
+    if: always()
+    needs: [gem, lint]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any required job failed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+      - name: All required jobs passed
+        run: echo "ok"
