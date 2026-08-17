@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= h(service[:name]) %> API Documentation</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #fafafa;
+      --sidebar-bg: #1e293b;
+      --sidebar-text: #e2e8f0;
+      --sidebar-active: #38bdf8;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --code-bg: #f1f5f9;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.6;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      background: var(--sidebar-bg);
+      color: var(--sidebar-text);
+      padding: 24px 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .sidebar h2 {
+      padding: 0 20px;
+      font-size: 18px;
+      margin-bottom: 4px;
+    }
+
+    .sidebar h3 {
+      padding: 12px 20px 6px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+
+    .sidebar a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 20px;
+      color: var(--sidebar-text);
+      text-decoration: none;
+      font-size: 14px;
+      transition: background 0.15s;
+    }
+
+    .sidebar a:hover {
+      background: rgba(255,255,255,0.08);
+    }
+
+    .sidebar .method-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 3px;
+      color: #fff;
+      min-width: 46px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    /* Main content */
+    .main {
+      padding: 32px 48px;
+      max-width: 960px;
+    }
+
+    .main > h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .main > .subtitle {
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      font-size: 15px;
+    }
+
+    .section-title {
+      font-size: 22px;
+      margin: 40px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    /* Operation cards */
+    .op-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .op-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .op-header .method-badge {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 4px;
+      color: #fff;
+      min-width: 56px;
+      text-align: center;
+    }
+
+    .op-header .path {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .op-header .op-id {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--code-bg);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    .op-header .summary {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-left: auto;
+    }
+
+    details {
+      border-top: 1px solid var(--border);
+    }
+
+    details:first-of-type {
+      border-top: none;
+    }
+
+    summary {
+      padding: 12px 20px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      user-select: none;
+    }
+
+    summary:hover {
+      background: var(--code-bg);
+    }
+
+    .detail-content {
+      padding: 0 20px 16px;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      background: var(--code-bg);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+
+    td {
+      padding: 8px 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    code {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 13px;
+    }
+
+    .type-link {
+      color: var(--sidebar-active);
+      text-decoration: none;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 13px;
+    }
+
+    .type-link:hover { text-decoration: underline; }
+
+    .type {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: 600;
+      vertical-align: middle;
+    }
+
+    .badge.extra {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .badge.format {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge.required {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .badge.optional {
+      background: #f1f5f9;
+      color: var(--text-muted);
+    }
+
+    .enum-values {
+      font-size: 11px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      color: var(--text-muted);
+      margin-top: 3px;
+      word-break: break-word;
+    }
+
+    /* Representation cards */
+    .rep-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .rep-header {
+      padding: 14px 20px;
+      font-weight: 600;
+      font-size: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .rep-body {
+      padding: 0 20px 12px;
+    }
+
+    /* Error table */
+    .error-table {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .error-table table { margin: 0; }
+
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 12px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+    }
+
+    .status-4xx { background: #fef3c7; color: #92400e; }
+    .status-5xx { background: #fee2e2; color: #991b1b; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar {
+        position: static;
+        height: auto;
+        padding: 16px 0;
+      }
+      .main { padding: 24px 16px; }
+      .op-header { flex-wrap: wrap; }
+      .op-header .summary { margin-left: 0; width: 100%; margin-top: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <h2><%= h(service[:name]) %></h2>
+
+      <h3>Operations</h3>
+      <% operations.each do |op| -%>
+      <a href="#op-<%= h(op[:id]) %>">
+        <span class="method-badge" style="background: <%= method_color(op[:method]) %>"><%= h(op[:method]) %></span>
+        <%= h(op[:id]) %>
+      </a>
+      <% end -%>
+
+      <% if representations.any? -%>
+      <h3>Representations</h3>
+      <% representations.each do |rep| -%>
+      <a href="#rep-<%= h(rep[:name]) %>"><%= h(rep[:name]) %></a>
+      <% end -%>
+      <% end -%>
+
+      <% if errors.any? -%>
+      <h3>Errors</h3>
+      <a href="#errors">Error Catalog</a>
+      <% end -%>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main">
+      <h1><%= h(service[:name]) %> API</h1>
+      <p class="subtitle">Generated by Trane</p>
+
+      <!-- Operations -->
+      <h2 class="section-title" id="operations">Operations</h2>
+
+      <% operations.each do |op| -%>
+      <div class="op-card" id="op-<%= h(op[:id]) %>">
+        <div class="op-header">
+          <span class="method-badge" style="background: <%= method_color(op[:method]) %>"><%= h(op[:method]) %></span>
+          <span class="path"><%= h(op[:path]) %></span>
+          <code class="op-id"><%= h(op[:id]) %></code>
+          <span class="summary"><%= h(op[:summary]) %></span>
+        </div>
+
+        <% if op[:request] -%>
+        <details open>
+          <summary>Request</summary>
+          <div class="detail-content">
+            <% if op[:request][:params] -%>
+            <table>
+              <thead><tr><th>Parameter</th><th>Type</th><th>Location</th><th>Required</th></tr></thead>
+              <tbody>
+                <% op[:request][:params].each do |p| -%>
+                <tr>
+                  <td><code><%= h(p[:name]) %></code></td>
+                  <td>
+                    <span class="type"><%= h(p[:type]) %></span>
+                    <% if p[:enum] -%>
+                    <div class="enum-values">enum: <%= p[:enum].map { |v| h(v) }.join(", ") %></div>
+                    <% end -%>
+                  </td>
+                  <td><%= h(p[:location]) %></td>
+                  <td><%= p[:required] ? '<span class="badge required">required</span>' : '<span class="badge optional">optional</span>' %></td>
+                </tr>
+                <% end -%>
+              </tbody>
+            </table>
+            <% end -%>
+            <% if op[:request][:body] -%>
+            <h4 style="margin: 12px 0 8px; font-size: 13px; color: var(--text-muted);">Body</h4>
+            <table>
+              <thead><tr><th>Field</th><th>Type</th><th>Required</th></tr></thead>
+              <tbody>
+                <% op[:request][:body].each do |f| -%>
+                <%= render_field_row(f, include_required: true) %>
+                <% end -%>
+              </tbody>
+            </table>
+            <% end -%>
+          </div>
+        </details>
+        <% end -%>
+
+        <% if op[:responses] -%>
+        <details open>
+          <summary>Response</summary>
+          <div class="detail-content">
+            <% op[:responses].each do |resp| -%>
+            <p style="margin-bottom: 8px;"><span class="status-badge status-<%= resp[:status] / 100 %>xx"><%= resp[:status] %></span></p>
+            <table>
+              <thead><tr><th>Field</th><th>Type</th></tr></thead>
+              <tbody>
+                <% resp[:fields].each do |f| -%>
+                <%= render_field_row(f) %>
+                <% end -%>
+              </tbody>
+            </table>
+            <% end -%>
+          </div>
+        </details>
+        <% end -%>
+
+        <% if op[:errors] -%>
+        <details>
+          <summary>Errors</summary>
+          <div class="detail-content">
+            <table>
+              <thead><tr><th>Error Key</th><th>Status</th><th>Description</th></tr></thead>
+              <tbody>
+                <% op[:errors].each do |err_key| -%>
+                <% err_def = errors.find { |e| e[:key] == err_key } -%>
+                <tr>
+                  <td><code><%= h(err_key) %></code></td>
+                  <td><span class="status-badge status-<%= err_def ? err_def[:status_code] / 100 : 5 %>xx"><%= err_def ? err_def[:status_code] : "—" %></span></td>
+                  <td><%= err_def ? h(err_def[:description]) : "—" %></td>
+                </tr>
+                <% end -%>
+              </tbody>
+            </table>
+          </div>
+        </details>
+        <% end -%>
+      </div>
+      <% end -%>
+
+      <!-- Representations -->
+      <% if representations.any? -%>
+      <h2 class="section-title" id="representations">Representations</h2>
+
+      <% representations.each do |rep| -%>
+      <div class="rep-card" id="rep-<%= h(rep[:name]) %>">
+        <div class="rep-header"><%= h(rep[:name]) %></div>
+        <div class="rep-body">
+          <table>
+            <thead><tr><th>Field</th><th>Type</th></tr></thead>
+            <tbody>
+              <% rep[:fields].each do |f| -%>
+              <%= render_field_row(f) %>
+              <% end -%>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <% end -%>
+      <% end -%>
+
+      <!-- Errors -->
+      <% if errors.any? -%>
+      <h2 class="section-title" id="errors">Error Catalog</h2>
+
+      <div class="error-table">
+        <table>
+          <thead><tr><th>Key</th><th>Status</th><th>Description</th></tr></thead>
+          <tbody>
+            <% errors.each do |err| -%>
+            <tr>
+              <td><code><%= h(err[:key]) %></code></td>
+              <td><span class="status-badge status-<%= err[:status_code] / 100 %>xx"><%= err[:status_code] %></span></td>
+              <td><%= h(err[:description]) %></td>
+            </tr>
+            <% end -%>
+          </tbody>
+        </table>
+      </div>
+      <% end -%>
+
+    </main>
+  </div>
+</body>
+</html>

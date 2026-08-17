@@ -1,0 +1,43 @@
+inherit_from: .rubocop_todo.yml
+
+plugins:
+  - rubocop-performance
+  - rubocop-rspec
+  - rubocop-packaging
+  - rubocop-rake
+  - rubocop-thread_safety
+
+inherit_gem:
+  rubocop-rails-omakase: rubocop.yml
+
+AllCops:
+  TargetRubyVersion: 3.2
+  NewCops: enable
+  Exclude:
+    - "gemfiles/**/*"
+    - "spec/integration/dummy/db/**/*"
+    - "spec/integration/dummy/log/**/*"
+    - "spec/integration/dummy/tmp/**/*"
+    - "vendor/**/*"
+
+# rubocop-rails-omakase disables the whole Performance department except one
+# cop; re-enable it since we explicitly depend on rubocop-performance.
+Performance:
+  Enabled: true
+
+# docs/cache.rb and controller/error_handler.rb memoize by
+# recomputing-and-discarding-the-loser on a race, the same atomic-swap idiom
+# Registry uses for its frozen snapshots — never torn state, at worst
+# duplicate (harmless, idempotent) work. See the Cache module's own comment
+# for the full reasoning. A mutex here would undo a deliberate design
+# choice, not fix a bug.
+#
+# trane.rb holds the process-level registry/configuration in module ivars
+# assigned exactly once, eagerly, at require time (single-threaded by
+# definition); afterwards they are only ever read. Trane.reset! mutates the
+# held objects in place — it never reassigns the ivars.
+ThreadSafety/ClassInstanceVariable:
+  Exclude:
+    - "lib/trane.rb"
+    - "lib/trane/docs/cache.rb"
+    - "lib/trane/controller/error_handler.rb"
