@@ -1,73 +1,73 @@
-# Handoff — auditoría de memory leaks
+# Handoff — memory leak audit
 
-**Fecha:** 2026-08-11
-**Rama:** `init_2` (base: `a443db2`)
-**Alcance:** todo `lib/` (~2.333 LOC). Cubre el ítem 8 de `docs/TODO.md`
-(«revisa posibles memory leaks»); la segunda mitad de ese ítem —agregar una
-herramienta que lo valide de forma continua— **quedó pendiente**, ver
-[Pendientes](#pendientes).
-**Entorno de medición:** Ruby 3.4.6, Rails 8.1.3.1, arm64-darwin24.
-
----
-
-## Estado (2026-08-13) — todo cerrado
-
-Los 4 hallazgos fueron validados contra el código (reproducción empírica de
-todas las mediciones, Ruby 3.4.7) y quedaron resueltos:
-
-- **Hallazgo 1 — arreglado.** `rails_reserved_classes` fue reemplazado por
-  `rails_reserved_names`: memoiza nombres (Strings) y compara contra
-  `klass.ancestors` por nombre. Sin pinning y sin el bug de development
-  post-reload. Spec de regresión que simula el reload incluido.
-- **Hallazgo 2 — cerrado por diseño.** El soporte multi-app se eliminó
-  (`hooks_registry`, `ApplicationHooks`, `with_application`, etc. ya no
-  existen); Trane tiene un registry y configuración únicos por proceso y
-  `Trane.reset!` para specs.
-- **Hallazgo 3 — arreglado.** Clave thread-local constante
-  (`Instance::ACTIVE_BUILDERS_KEY`) con Hash `{object_id => builder}` y
-  `delete` en el `ensure`. Sin símbolos dinámicos ni claves residuales;
-  spec de higiene incluido.
-- **Hallazgo 4 — mitigado.** Invariante documentada en los tres métodos
-  (solo objetos del snapshot actual) + tope defensivo
-  (`Instance::MAX_CACHE_ENTRIES`): al excederse se construye sin cachear.
-- **Pendiente 1 (validación continua) — resuelto.** Las mediciones A y B son
-  ahora `spec/trane/memory_regression_spec.rb` (umbral de `heap_live_slots`,
-  validado que detecta una fuga de 1 objeto/iteración).
-- **Fuera de alcance (contención de mutex) — desapareció** junto con el
-  multi-app: `Trane.registry` es una lectura de ivar.
-
-El resto del documento se conserva como registro de la auditoría original;
-las referencias archivo:línea corresponden a la base `a443db2`.
+**Date:** 2026-08-11
+**Branch:** `init_2` (base: `a443db2`)
+**Scope:** all of `lib/` (~2,333 LOC). Covers item 8 of `docs/TODO.md`
+("check for possible memory leaks"); the second half of that item — adding a
+tool that validates it continuously — **was left pending**, see
+[Pending](#pending).
+**Measurement environment:** Ruby 3.4.6, Rails 8.1.3.1, arm64-darwin24.
 
 ---
 
-## Resumen
+## Status (2026-08-13) — everything closed
 
-El camino caliente **no tiene fugas**. El diseño de snapshot inmutable con
-invalidación de cachés en cada `replace!` funciona: 200k requests dejaron +40
-slots vivos y 5k ciclos de reload dejaron +44 slots, ambos tras GC completo.
+All 4 findings were validated against the code (every measurement reproduced
+empirically, Ruby 3.4.7) and resolved:
 
-Se encontraron **4 fugas reales, ninguna en el camino de request de
-producción**. Ordenadas por impacto:
+- **Finding 1 — fixed.** `rails_reserved_classes` was replaced by
+  `rails_reserved_names`: it memoizes names (Strings) and compares against
+  `klass.ancestors` by name. No pinning and no post-reload development bug.
+  A regression spec simulating the reload is included.
+- **Finding 2 — closed by design.** Multi-app support was removed
+  (`hooks_registry`, `ApplicationHooks`, `with_application`, etc. no longer
+  exist); Trane has a single process-level registry and configuration, plus
+  `Trane.reset!` for specs.
+- **Finding 3 — fixed.** Constant thread-local key
+  (`Instance::ACTIVE_BUILDERS_KEY`) holding a `{object_id => builder}` Hash
+  with `delete` in the `ensure`. No dynamic symbols and no leftover keys; a
+  hygiene spec is included.
+- **Finding 4 — mitigated.** The invariant is documented on all three methods
+  (current-snapshot-owned objects only) + a defensive bound
+  (`Instance::MAX_CACHE_ENTRIES`): past it, results are built without caching.
+- **Pending 1 (continuous validation) — resolved.** Measurements A and B are
+  now `spec/trane/memory_regression_spec.rb` (a `heap_live_slots` threshold,
+  validated to detect a 1-object-per-iteration leak).
+- **Out of scope (mutex contention) — gone** along with multi-app:
+  `Trane.registry` is an ivar read.
 
-| # | Hallazgo | Dónde | Impacto | Severidad |
+The rest of the document is preserved as the record of the original audit;
+file:line references correspond to the `a443db2` base.
+
+---
+
+## Summary
+
+The hot path **has no leaks**. The immutable-snapshot design with cache
+invalidation on every `replace!` holds up: 200k requests left +40 live slots
+and 5k reload cycles left +44 slots, both after a full GC.
+
+**4 real leaks were found, none on the production request path.** Ordered by
+impact:
+
+| # | Finding | Where | Impact | Severity |
 |---|---|---|---|---|
-| 1 | `rails_reserved_classes` retiene constantes recargables | `lib/trane/controller/error_handler.rb:55-67` | development (fuga acotada + bug de comportamiento) | Media |
-| 2 | `hooks_registry` sin eviction automática | `lib/trane.rb:108-117` | tests / multi-app | Media-baja |
-| 3 | Símbolos dinámicos y thread-locals por `Registry::Instance` | `lib/trane/registry.rb:97,143` | tests / multi-app | Baja |
-| 4 | Cachés keyed por `object_id` sin tope ni eviction | `lib/trane/registry.rb:219,230,239` | latente (inalcanzable desde el gem hoy) | Baja |
+| 1 | `rails_reserved_classes` retains reloadable constants | `lib/trane/controller/error_handler.rb:55-67` | development (bounded leak + behavior bug) | Medium |
+| 2 | `hooks_registry` with no automatic eviction | `lib/trane.rb:108-117` | tests / multi-app | Medium-low |
+| 3 | Dynamic symbols and thread-locals per `Registry::Instance` | `lib/trane/registry.rb:97,143` | tests / multi-app | Low |
+| 4 | `object_id`-keyed caches with no bound or eviction | `lib/trane/registry.rb:219,230,239` | latent (unreachable from the gem today) | Low |
 
-Recomendación de orden de arreglo: **1 y 3 primero** — fuga confirmada, arreglo
-chico y acotado. El 1 además corrige un bug de comportamiento en development.
+Recommended fix order: **1 and 3 first** — confirmed leak, small and
+self-contained fix. 1 also corrects a behavior bug in development.
 
 ---
 
-## 1. `rails_reserved_classes` retiene constantes recargables
+## 1. `rails_reserved_classes` retains reloadable constants
 
-**Dónde:** `lib/trane/controller/error_handler.rb:55-67`
+**Where:** `lib/trane/controller/error_handler.rb:55-67`
 
-`ErrorHandler.rails_reserved_classes` memoiza objetos `Class` en un ivar a nivel
-de módulo del gem, que nunca se invalida:
+`ErrorHandler.rails_reserved_classes` memoizes `Class` objects in a gem
+module-level ivar that is never invalidated:
 
 ```ruby
 def self.rails_reserved_classes
@@ -79,183 +79,184 @@ def self.rails_reserved_classes
 end
 ```
 
-Si el host registra su propia excepción —patrón soportado por Rails:
-`config.action_dispatch.rescue_responses["MyApp::CustomError"] = :not_found`—
-esa clase es autoloadeada por Zeitwerk y queda pinneada en el gem.
+If the host registers its own exception — a pattern Rails supports:
+`config.action_dispatch.rescue_responses["MyApp::CustomError"] = :not_found` —
+that class is autoloaded by Zeitwerk and gets pinned inside the gem.
 
-**Evidencia** (simulando un reload con `remove_const` + redefinición):
+**Evidence** (simulating a reload with `remove_const` + redefinition):
 
 ```
-memo incluye la clase original?       true
-tamaño del memo:                      15
-clase nueva es la misma que la vieja? false
-clase VIEJA retenida por el memo?     true
-reconoce la clase NUEVA?              false
-clase vieja sigue viva tras GC?       true
+memo includes the original class?      true
+memo size:                             15
+new class is the same as the old one?  false
+OLD class retained by the memo?        true
+recognizes the NEW class?              false
+old class still alive after GC?        true
 ```
 
-**Impacto.** La retención de memoria es **acotada** (una clase obsoleta por
-excepción registrada por el host; el `||=` nunca refresca, así que retiene solo
-la primera versión cargada). El efecto colateral es peor que la memoria: tras el
-primer reload, `_trane_rails_reserved?` compara `klass <= reserved` contra la
-clase vieja y da `false`, así que **la excepción del host deja de re-lanzarse y
-cae en el 500 genérico** en vez del 404 de Rails. Solo afecta a development
-(producción no recarga).
+**Impact.** The memory retention is **bounded** (one stale class per
+host-registered exception; the `||=` never refreshes, so only the first
+loaded version is retained). The side effect is worse than the memory: after
+the first reload, `_trane_rails_reserved?` compares `klass <= reserved`
+against the old class and returns `false`, so **the host's exception stops
+being re-raised and falls into the generic 500** instead of Rails' 404. Only
+affects development (production does not reload).
 
-**Arreglo propuesto.** Dos opciones:
+**Proposed fix.** Two options:
 
-- Resetear `@rails_reserved_classes` desde el `to_prepare` del Engine
-  (`lib/trane/engine.rb:119`), junto a `Docs::Cache.invalidate!`.
-- Mejor: no guardar clases. Indexar por nombre (`String`) y comparar con
-  `klass.ancestors.map(&:name)`. Elimina la retención de raíz y hace innecesaria
-  la invalidación.
+- Reset `@rails_reserved_classes` from the Engine's `to_prepare`
+  (`lib/trane/engine.rb:119`), next to `Docs::Cache.invalidate!`.
+- Better: don't store classes. Index by name (`String`) and compare with
+  `klass.ancestors.map(&:name)`. Removes the retention at the root and makes
+  invalidation unnecessary.
 
-Nota: el comentario que ya está en el código (líneas 49-54) advierte sobre
-llamar al método pre-boot, pero no cubre este caso — el problema no es *cuándo*
-se memoiza sino *qué* se memoiza.
+Note: the comment already in the code (lines 49-54) warns about calling the
+method pre-boot, but doesn't cover this case — the problem isn't *when* it
+memoizes but *what* it memoizes.
 
 ---
 
-## 2. `hooks_registry` sin eviction automática
+## 2. `hooks_registry` with no automatic eviction
 
-**Dónde:** `lib/trane.rb:108-117`, poblado desde `lib/trane/engine.rb:30`
+**Where:** `lib/trane.rb:108-117`, populated from `lib/trane/engine.rb:30`
 
-Las entradas se agregan en el initializer del Engine y solo salen si alguien
-llama `Trane.uninstall_hooks_for` a mano.
+Entries are added in the Engine initializer and only leave if someone calls
+`Trane.uninstall_hooks_for` by hand.
 
-**Evidencia** (2.000 apps instaladas, todas fuera de scope y recolectables):
+**Evidence** (2,000 apps installed, all out of scope and collectable):
 
 ```
 hooks_registry.size = 2000
-Registry::Instance vivas = 2002        slots +50017    símbolos +2000
+live Registry::Instance = 2002        slots +50017    symbols +2000
 ```
 
-Cada entrada retiene un `ApplicationHooks` completo → `Registry::Instance` →
-snapshot con todas las definiciones. La clave es el `object_id` (Integer), así
-que la app en sí **sí** se puede recolectar; su registry no.
+Each entry retains a full `ApplicationHooks` → `Registry::Instance` →
+snapshot with all definitions. The key is the `object_id` (Integer), so the
+app itself **can** be collected; its registry cannot.
 
-**Impacto.** En producción es 1 entrada: irrelevante. El riesgo está en suites
-de tests y procesos multi-app. Ya está documentado en el propio código y los
-specs de multi-app lo limpian (`spec/integration/multi_app_isolation_spec.rb:11`,
-`spec/integration/engine_ignore_autoload_paths_spec.rb:164,193-194`), así que
-hoy es más un footgun para hosts que una fuga activa en este repo.
+**Impact.** In production it is 1 entry: irrelevant. The risk is in test
+suites and multi-app processes. It is already documented in the code itself
+and the multi-app specs clean it up
+(`spec/integration/multi_app_isolation_spec.rb:11`,
+`spec/integration/engine_ignore_autoload_paths_spec.rb:164,193-194`), so
+today it is more a footgun for hosts than an active leak in this repo.
 
-**Arreglo propuesto.** Ninguno urgente. Si se quiere cerrar: registrar un
-finalizer sobre la app (`ObjectSpace.define_finalizer`) o exponer el ciclo de
-vida en el README para hosts multi-app. Alternativa más limpia: no indexar por
-`object_id` sino colgar los hooks de la propia app
-(`app.config.trane`) — lo que ya se insinúa en los comentarios del Engine — de
-modo que mueran con ella.
+**Proposed fix.** None urgent. To close it: register a finalizer on the app
+(`ObjectSpace.define_finalizer`) or expose the lifecycle in the README for
+multi-app hosts. Cleaner alternative: don't index by `object_id` but hang the
+hooks off the app itself (`app.config.trane`) — which the Engine comments
+already hint at — so they die with it.
 
 ---
 
-## 3. Símbolos dinámicos y thread-locals por `Registry::Instance`
+## 3. Dynamic symbols and thread-locals per `Registry::Instance`
 
-**Dónde:** `lib/trane/registry.rb:97` y `lib/trane/registry.rb:143`
+**Where:** `lib/trane/registry.rb:97` and `lib/trane/registry.rb:143`
 
 ```ruby
-@builder_key = :"trane_active_builder_#{object_id}"   # línea 97
+@builder_key = :"trane_active_builder_#{object_id}"   # line 97
 ...
-Thread.current.thread_variable_set(@builder_key, nil) # línea 143 (ensure)
+Thread.current.thread_variable_set(@builder_key, nil) # line 143 (ensure)
 ```
 
-El detalle no obvio: **en Ruby 3.4, poner `nil` no borra la clave** de la tabla
-de thread-locals. Verificado aparte:
+The non-obvious detail: **in Ruby 3.4, setting `nil` does not delete the
+key** from the thread-locals table. Verified separately:
 
 ```ruby
 t.thread_variable_set(:foo, 1);   t.thread_variables  # => [:foo]
 t.thread_variable_set(:foo, nil); t.thread_variables  # => [:foo]
 ```
 
-**Evidencia** (5.000 instancias creadas, `replace!`-adas y descartadas):
+**Evidence** (5,000 instances created, `replace!`-ed and discarded):
 
 ```
 thread_variables: 2 -> 5002  (delta 5000)
-claves trane_active_builder retenidas: 5002  (todas con valor nil)
-símbolos +5000                                slots +10001
+retained trane_active_builder keys: 5002  (all with nil value)
+symbols +5000                                slots +10001
 ```
 
-Las instancias se recolectan, pero el símbolo dinámico y la entrada en la tabla
-de thread-locals quedan vivos mientras viva el thread, tras GC completo. Crece
-linealmente con la cantidad de `Registry::Instance` que hayan corrido `replace!`
-en ese thread.
+The instances get collected, but the dynamic symbol and the thread-locals
+table entry stay alive for as long as the thread lives, after a full GC. It
+grows linearly with the number of `Registry::Instance` that ran `replace!`
+on that thread.
 
-**Impacto.** En producción es 1 instancia por app creada en boot: irrelevante.
-Importa en suites largas y multi-app.
+**Impact.** In production it is 1 instance per app created at boot:
+irrelevant. It matters in long test suites and multi-app.
 
-**Arreglo propuesto.** Una única clave **constante** que apunte a un `Hash`
-`{ instance.object_id => builder }`, con `delete` en el `ensure`. Deja un solo
-símbolo por proceso en vez de uno por instancia, y la tabla vuelve a vaciarse.
+**Proposed fix.** A single **constant** key pointing to a Hash
+`{ instance.object_id => builder }`, with `delete` in the `ensure`. Leaves
+one symbol per process instead of one per instance, and the table empties
+again.
 
-Ojo al implementarlo: la clave por-instancia existe para que `active_builder`
-(línea 246) distinga builders de instancias distintas **y** de threads
-distintos; un ivar plano `@active_builder` no sirve, porque un thread
-concurrente en `register_operation` escribiría en el builder de otro. La
-indirección por `object_id` dentro de un Hash thread-local preserva ambas
-propiedades.
+Implementation caveat: the per-instance key exists so `active_builder`
+(line 246) can tell apart builders from different instances **and** from
+different threads; a flat `@active_builder` ivar won't do, because a
+concurrent thread inside `register_operation` would write into another's
+builder. The `object_id` indirection inside a thread-local Hash preserves
+both properties.
 
 ---
 
-## 4. Cachés keyed por `object_id`, sin tope ni eviction (latente)
+## 4. `object_id`-keyed caches, with no bound or eviction (latent)
 
-**Dónde:** `lib/trane/registry.rb:219` (`compiled_serializer_for`),
+**Where:** `lib/trane/registry.rb:219` (`compiled_serializer_for`),
 `:230` (`validator_field_names_for`), `:239` (`validator_declared_field_names_for`)
 
-Las tres cachean por `object_id` **sin guardar referencia al objeto**, así que la
-caché nunca puede saber que su clave murió.
+All three cache by `object_id` **without keeping a reference to the object**,
+so the cache can never learn that its key died.
 
-**Evidencia** (alimentadas con 100k objetos transitorios):
+**Evidence** (fed with 100k transient objects):
 
 ```
-100.000 entradas × 3 cachés
-memsize de los Hash = 12.583.392 bytes (sin contar los valores)
+100,000 entries × 3 caches
+memsize of the Hashes = 12,583,392 bytes (not counting the values)
 slots +800002
 ```
 
-**Impacto: latente, no activo.** Hoy es inalcanzable desde el gem: todos los
-callers internos (`Controller::Renderer`, `ContractValidator`) pasan objetos
-dueños del snapshot congelado, y `replace!` / `reset!` / los `register_*` limpian
-las tres cachés — de ahí que las mediciones A y B den planas. Pero
-`Registry.validator_field_names_for` y `Serializer.new(response_def, registry)`
-son métodos públicos (no documentados en el README), así que un host que
-construya un `ResponseDefinition` por request hace crecer esto sin límite.
+**Impact: latent, not active.** Today it is unreachable from the gem: every
+internal caller (`Controller::Renderer`, `ContractValidator`) passes objects
+owned by the frozen snapshot, and `replace!` / `reset!` / the `register_*`
+paths clear all three caches — which is why measurements A and B come out
+flat. But `Registry.validator_field_names_for` and
+`Serializer.new(response_def, registry)` are public methods (undocumented in
+the README), so a host that builds a `ResponseDefinition` per request grows
+this without limit.
 
-**Arreglo propuesto.** Barato y suficiente: documentar la invariante en el
-método («solo objetos dueños del snapshot actual») y/o poner un tope defensivo
-con corte a la construcción directa cuando se excede. Un `ObjectSpace::WeakMap`
-resolvería la eviction, pero es más maquinaria de la que el caso justifica.
+**Proposed fix.** Cheap and sufficient: document the invariant on the method
+("current-snapshot-owned objects only") and/or add a defensive bound that
+falls back to direct construction when exceeded. An `ObjectSpace::WeakMap`
+would solve eviction, but it is more machinery than the case justifies.
 
-Detalle menor asociado: `key = [response_def.object_id, strict_mode]` aloca un
-`Array` por request. No es fuga (el GC lo maneja, medición A plana), pero es
-garbage evitable con un Hash anidado.
+Minor related detail: `key = [response_def.object_id, strict_mode]` allocates
+an `Array` per request. Not a leak (the GC handles it, measurement A is
+flat), but avoidable garbage with a nested Hash.
 
 ---
 
-## Lo que está sano — no romper
+## What is healthy — do not break
 
-Estos puntos son decisiones correctas y deliberadas; conviene no perderlas en un
-refactor:
+These are correct, deliberate decisions; worth not losing them in a refactor:
 
-- **`ErrorDefinition` guarda `key.name` (String), no la `Class`**
-  (`lib/trane/error_registry.rb:26`). Registrar `error MyApp::Foo` **no** pinnea
-  la clase del host. Es exactamente el error que sí comete el hallazgo 1 — el
-  contraste vale como referencia de cuál es el patrón bueno.
-- **Sin `to_sym` sobre input del usuario**, así que no hay DoS por símbolos:
-  `_trane_operation` viene de los `defaults` de la ruta (inyectados en
-  `RoutingExtension`), no de `params`; y `ExtraAttributesFilter` topea en
-  `MAX_VALUES = 100` y solo hace `to_s`.
-- **`ExtraAttributesFilter::EMPTY`** como sentinela congelado compartido.
-- **`Docs::Cache`** mantiene un único snapshot acotado, invalidado en cada
+- **`ErrorDefinition` stores `key.name` (String), not the `Class`**
+  (`lib/trane/error_registry.rb:26`). Registering `error MyApp::Foo` does
+  **not** pin the host's class. It is exactly the mistake finding 1 does
+  make — the contrast is a useful reference for the good pattern.
+- **No `to_sym` on user input**, so no symbol DoS: `_trane_operation` comes
+  from the route's `defaults` (injected in `RoutingExtension`), not from
+  `params`; and `ExtraAttributesFilter` caps at `MAX_VALUES = 100` and only
+  calls `to_s`.
+- **`ExtraAttributesFilter::EMPTY`** as a shared frozen sentinel.
+- **`Docs::Cache`** keeps a single bounded snapshot, invalidated on every
   `to_prepare`.
-- Las definiciones son objetos `Data` congelados: nada mutable compartido entre
+- Definitions are frozen `Data` objects: nothing mutable shared between
   requests.
 
 ---
 
-## Cómo reproducir
+## How to reproduce
 
-Las mediciones se hicieron con un script ad-hoc (no quedó versionado; ver
-[Pendientes](#pendientes)). Versión mínima para regenerar los números:
+The measurements were made with an ad-hoc script (not checked in; see
+[Pending](#pending)). Minimal version to regenerate the numbers:
 
 ```ruby
 # ruby -I lib probe.rb
@@ -267,7 +268,7 @@ def measure(label)
   slots, syms = GC.stat[:heap_live_slots], Symbol.all_symbols.size
   yield
   4.times { GC.start(full_mark: true, immediate_sweep: true) }
-  printf("%-46s slots %+9d  símbolos %+7d\n",
+  printf("%-46s slots %+9d  symbols %+7d\n",
          label, GC.stat[:heap_live_slots] - slots, Symbol.all_symbols.size - syms)
 end
 
@@ -283,7 +284,7 @@ end
 
 data = { id: 1, name: "x", secret: "s" }
 
-# A) camino de request en estado estable — debe dar plano
+# A) steady-state request path — must come out flat
 inst = Trane::Registry::Instance.new
 inst.replace! { |b| b.register_operation(build_op(:show_user)) }
 resp = inst.operations[:show_user].responses[200]
@@ -291,25 +292,25 @@ measure("A) 200k requests") do
   200_000.times { inst.compiled_serializer_for(resp, :raise).serialize(data) }
 end
 
-# B) camino de reload sobre la MISMA instancia — debe dar plano
+# B) reload path on the SAME instance — must come out flat
 ri = Trane::Registry::Instance.new
-measure("B) 5k reloads (misma instancia)") do
+measure("B) 5k reloads (same instance)") do
   5_000.times { ri.replace! { |b| b.register_operation(build_op(:show_user)) } }
 end
 
-# C) fuga de thread-locals + símbolos (hallazgo 3)
+# C) thread-locals + symbols leak (finding 3)
 tv = Thread.current.thread_variables.size
-measure("C) 5k Registry::Instance descartadas") do
+measure("C) 5k discarded Registry::Instance") do
   5_000.times do
     i = Trane::Registry::Instance.new
     i.replace! { |b| b.register_operation(build_op(:show_user)) }
   end
 end
 puts "   thread_variables: #{tv} -> #{Thread.current.thread_variables.size}"
-puts "   claves retenidas: #{Thread.current.thread_variables.grep(/trane_active_builder/).size}"
+puts "   retained keys: #{Thread.current.thread_variables.grep(/trane_active_builder/).size}"
 
-# D) fuga de hooks_registry (hallazgo 2)
-measure("D) 2k apps sin uninstall") do
+# D) hooks_registry leak (finding 2)
+measure("D) 2k apps without uninstall") do
   2_000.times do
     app = Object.new
     Trane.install_hooks_for(app, Trane::ApplicationHooks.new(
@@ -317,11 +318,11 @@ measure("D) 2k apps sin uninstall") do
   end
 end
 puts "   hooks_registry.size=#{Trane.hooks_registry.size}"
-puts "   Registry::Instance vivas=#{ObjectSpace.each_object(Trane::Registry::Instance).count}"
+puts "   live Registry::Instance=#{ObjectSpace.each_object(Trane::Registry::Instance).count}"
 
-# E) cachés object_id con objetos transitorios (hallazgo 4)
+# E) object_id caches with transient objects (finding 4)
 p2 = Trane::Registry::Instance.new
-measure("E) 100k fields transitorios") do
+measure("E) 100k transient fields") do
   100_000.times do
     f = [ Trane::FieldNode.new(name: :id, type: :integer) ]
     p2.validator_field_names_for(f)
@@ -331,32 +332,32 @@ end
 puts "   validator_field_names=#{p2.instance_variable_get(:@validator_field_names).size}"
 ```
 
-Para el hallazgo 1 hace falta Rails cargado (`require "action_controller/railtie"`),
-registrar `ActionDispatch::ExceptionWrapper.rescue_responses["MyApp::CustomError"]`,
-llamar a `ErrorHandler.rails_reserved_classes`, y después hacer
-`remove_const` + redefinir la clase para simular el reload.
+Finding 1 requires Rails loaded (`require "action_controller/railtie"`),
+registering `ActionDispatch::ExceptionWrapper.rescue_responses["MyApp::CustomError"]`,
+calling `ErrorHandler.rails_reserved_classes`, and then doing
+`remove_const` + redefining the class to simulate the reload.
 
 ---
 
-## Pendientes
+## Pending
 
-1. **Herramienta de validación continua** (segunda mitad del ítem 8 del TODO).
-   No se agregó ninguna. Opciones evaluadas por encima, sin decidir:
-   - `memory_profiler` / `benchmark-memory`: buenos para reportes puntuales de
-     allocation en un bloque; no detectan retención entre ciclos.
-   - `derailed_benchmarks` (`perf:mem_over_time`, `perf:objects`): apuntado a
-     apps Rails, no a una gema; requeriría correrlo sobre la dummy app.
-   - **Lo más barato y ajustado a este repo:** convertir A y B del script de
-     arriba en un spec con umbral de slots (`GC.stat[:heap_live_slots]` antes/
-     después, tolerancia holgada). Cubre la regresión que importa —que el camino
-     de request y el de reload sigan planos— sin dependencias nuevas.
-2. Decidir e implementar los arreglos 1 a 4. Ninguno está aplicado: **esta
-   sesión fue solo auditoría, no se tocó código de `lib/`.**
+1. **Continuous validation tool** (second half of TODO item 8). None was
+   added. Options evaluated superficially, undecided:
+   - `memory_profiler` / `benchmark-memory`: good for one-off allocation
+     reports over a block; they don't detect retention across cycles.
+   - `derailed_benchmarks` (`perf:mem_over_time`, `perf:objects`): aimed at
+     Rails apps, not a gem; it would have to run against the dummy app.
+   - **Cheapest and best fit for this repo:** turn A and B from the script
+     above into a spec with a slot threshold (`GC.stat[:heap_live_slots]`
+     before/after, generous tolerance). Covers the regression that matters —
+     that the request and reload paths stay flat — with no new dependencies.
+2. Decide and implement fixes 1 through 4. None is applied: **this session
+   was audit-only, no code under `lib/` was touched.**
 
-## Fuera de alcance (detectado de paso)
+## Out of scope (spotted in passing)
 
-`Trane.current_hooks` toma `HOOKS_REGISTRY_MUTEX` en **cada** acceso a
-`Trane.registry` (`lib/trane.rb:108-110`), o sea en cada request. Es contención
-global, no una fuga — pero está en el camino caliente y el `@hooks_registry ||= {}`
-que protege solo se inicializa una vez. Vale mirarlo cuando se toque
-performance.
+`Trane.current_hooks` takes `HOOKS_REGISTRY_MUTEX` on **every** access to
+`Trane.registry` (`lib/trane.rb:108-110`), i.e. on every request. It is
+global contention, not a leak — but it sits on the hot path and the
+`@hooks_registry ||= {}` it protects only initializes once. Worth a look
+when performance comes up.
