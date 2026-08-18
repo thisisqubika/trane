@@ -52,23 +52,12 @@ The version lives in exactly one place: `lib/trane/version.rb`.
 
 ## Publishing a release
 
-### Prerequisites (once per maintainer)
-
-- A [rubygems.org](https://rubygems.org/sign_up) account with **MFA enabled**
-  (Settings → Multi-factor Authentication → "UI and API"). This is mandatory:
-  the gemspec declares `rubygems_mfa_required`.
-- An **API key** (password sign-in from the CLI was retired by RubyGems):
-  create one at [rubygems.org/profile/api_keys](https://rubygems.org/profile/api_keys)
-  with the **Push rubygem** scope — ideally scoped to the `trane` gem — and
-  store it locally:
-
-  ```bash
-  mkdir -p ~/.gem
-  printf -- "---\n:rubygems_api_key: YOUR_KEY\n" > ~/.gem/credentials
-  chmod 0600 ~/.gem/credentials
-  ```
-
-- Being an owner of the gem (see [Co-owners](#co-owners)).
+Releases are published automatically via RubyGems
+[Trusted Publishing](https://guides.rubygems.org/trusted-publishing/): the
+`Release` workflow (`.github/workflows/release.yml`) builds and pushes the
+gem through OIDC whenever a `v*` tag is pushed. No API keys are stored
+anywhere — rubygems.org trusts this repository + workflow directly (gem page
+→ Settings → Trusted publishers).
 
 ### Release checklist
 
@@ -76,31 +65,39 @@ The version lives in exactly one place: `lib/trane/version.rb`.
    CHANGELOG section into `[X.Y.Z] - date` (with its tag link at the bottom
    of the file). Merge to `main`.
 
-2. **Build and push from `main`**:
+2. **Tag** (must match `lib/trane/version.rb` — the gem is built from the
+   tagged tree):
 
    ```bash
    git checkout main && git pull
-   gem build trane.gemspec          # produces trane-X.Y.Z.gem
-   gem push trane-X.Y.Z.gem         # uses ~/.gem/credentials; prompts for the MFA OTP code
+   git tag vX.Y.Z && git push origin vX.Y.Z
    ```
 
-   The very first push in the gem's history also claims the `trane` name on
-   rubygems.org.
+   The tag push triggers the `Release` workflow, which builds and publishes
+   to rubygems.org.
 
-3. **Verify the page** at [rubygems.org/gems/trane](https://rubygems.org/gems/trane):
-   the README renders (logo and absolute links are already prepared for
-   this), the metadata links work (Source Code, Changelog, Bug Tracker,
-   Documentation), and the new version is listed.
-
-4. **Tag and GitHub release** (the CHANGELOG links to this tag):
+3. **GitHub release** (the CHANGELOG links to this tag):
 
    ```bash
-   git tag vX.Y.Z && git push origin vX.Y.Z
    gh release create vX.Y.Z --title "vX.Y.Z"
    ```
 
    Paste the corresponding CHANGELOG section as the release notes (via the
    UI or `--notes`).
+
+4. **Verify the page** at [rubygems.org/gems/trane](https://rubygems.org/gems/trane):
+   the new version is listed and the metadata links work (Source Code,
+   Changelog, Bug Tracker, Documentation).
+
+### Manual publishing (fallback)
+
+If the workflow is unavailable, an owner can publish by hand: create an API
+key at [rubygems.org/profile/api_keys](https://rubygems.org/profile/api_keys)
+(scope **Push rubygem**, ideally restricted to `trane`; password sign-in from
+the CLI was retired by RubyGems), store it in `~/.gem/credentials` (mode
+0600), then `gem build trane.gemspec && gem push trane-X.Y.Z.gem` from
+`main` — it prompts for the MFA OTP code, mandatory because the gemspec
+declares `rubygems_mfa_required`.
 
 ### Co-owners
 
@@ -112,15 +109,6 @@ gem owner trane --add gaston.gabadian@qubika.com
 
 Each owner needs their own rubygems.org account with MFA. List current
 owners with `gem owner trane`.
-
-### Future automation (recommended)
-
-Set up RubyGems [Trusted Publishing](https://guides.rubygems.org/trusted-publishing/):
-on the gem's page → Settings → Trusted Publishers, authorize this repo + a
-GitHub Actions workflow to publish via OIDC, with no stored API keys. With
-the official [`rubygems/release-gem`](https://github.com/rubygems/release-gem)
-action, the flow becomes: release PR → merge → `git push origin vX.Y.Z` → it
-publishes itself. Steps 2 and 3 of the checklist go away.
 
 ## Issues and contributions
 

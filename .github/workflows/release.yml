@@ -1,0 +1,32 @@
+name: Release
+
+# Publishes the gem to rubygems.org via Trusted Publishing (OIDC) whenever a
+# version tag is pushed. No API keys are stored anywhere: rubygems.org trusts
+# this repository + workflow file directly (configured under the gem's
+# "Trusted publishers" settings).
+#
+# Release flow (see docs/MAINTAINERS.md): merge the release PR (version bump
+# + CHANGELOG cut), then `git tag vX.Y.Z && git push origin vX.Y.Z`. The tag
+# must match lib/trane/version.rb — the gem is built from the tagged tree.
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Required for OIDC trusted publishing with rubygems.org.
+      id-token: write
+      # Lets the release-gem action verify/push against the tagged commit.
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+      - name: Build and publish to rubygems.org
+        uses: rubygems/release-gem@v1
