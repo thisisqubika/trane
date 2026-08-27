@@ -72,6 +72,7 @@ module Trane
           strict      = Trane.configuration.effective_strict_mode
           serializer  = registry.compiled_serializer_for(response_def, strict)
           hash        = serializer.serialize(contract_data, extra_attributes: extra_attrs)
+          hash        = Trane.configuration.success_envelope.call(hash)
 
           body = ::JSON.generate(hash)
           super(

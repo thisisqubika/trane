@@ -14,6 +14,11 @@ module Trane
     # the route did not declare `contract: { operation: ... }`).
     ON_MISSING_OPERATION_MODES = %i[raise log fallback].freeze
 
+    # Applied to the serialized response hash immediately before it is encoded,
+    # so a host can wrap every success payload in its own envelope. Identity by
+    # default: the response is exactly what the contract declares.
+    DEFAULT_SUCCESS_ENVELOPE = ->(body) { body }
+
     attr_reader :strict_mode
 
     # Returns the process-level Configuration instance via the Trane shim.
@@ -73,6 +78,18 @@ module Trane
       @on_missing_operation = value
     end
 
+    def success_envelope
+      @success_envelope || DEFAULT_SUCCESS_ENVELOPE
+    end
+
+    def success_envelope=(value)
+      raise FrozenError, "Trane::Configuration is frozen; cannot modify success_envelope after boot" if @frozen
+      unless value.respond_to?(:call)
+        raise Trane::Error, "success_envelope must respond to #call (got #{value.inspect})"
+      end
+      @success_envelope = value
+    end
+
     # Returns the effective strict mode for the current environment.
     #
     # @return [Symbol] :raise, :log, or :ignore
@@ -120,6 +137,7 @@ module Trane
       @strict_mode          = nil
       @contracts_paths      = nil
       @on_missing_operation = nil
+      @success_envelope     = nil
       @frozen               = false
     end
 
@@ -132,6 +150,7 @@ module Trane
         strict_mode:          @strict_mode,
         contracts_paths:      @contracts_paths,
         on_missing_operation: @on_missing_operation,
+        success_envelope:     @success_envelope,
         frozen:               @frozen
       }
     end
@@ -140,6 +159,7 @@ module Trane
       @strict_mode          = state[:strict_mode]
       @contracts_paths      = state[:contracts_paths]
       @on_missing_operation = state[:on_missing_operation]
+      @success_envelope     = state[:success_envelope]
       @frozen               = state[:frozen]
     end
   end

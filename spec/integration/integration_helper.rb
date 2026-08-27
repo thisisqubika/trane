@@ -5,6 +5,7 @@ ENV["RAILS_ENV"] = "test"
 require_relative "dummy/config/environment"
 require "rspec"
 require "rack/test"
+require "trane/testing"
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|
