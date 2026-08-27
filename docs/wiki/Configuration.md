@@ -154,3 +154,47 @@ drawn.
 
 To reset all Trane state between tests (registry, configuration, and docs
 cache in one call), use `Trane.reset!` — see [Architecture](Architecture.md).
+
+## Response envelopes
+
+Hosts serving a pre-existing contract can wrap every response in their own
+envelope instead of Trane's default shape.
+
+```ruby
+# config/initializers/trane.rb
+Trane.configure do |config|
+  config.success_envelope = ->(body) { { status: "success" }.merge(body) }
+
+  config.error_envelope = lambda do |exception, definition|
+    { status: "error",
+      messages: [ { key: definition ? definition.key.to_s : exception.class.name,
+                    dsc: exception.message } ] }
+  end
+
+  config.rescue_rails_reserved = true
+end
+```
+
+| Option | Signature | Default |
+|---|---|---|
+| `success_envelope` | `(Hash) -> Hash` — the serialized response, returning what to encode | identity |
+| `error_envelope` | `(Exception, ErrorDefinition or nil) -> Hash` — `nil` when no error is registered | the `{"errors":[{"key","message"}]}` shape; message gated to local environments only when no error is registered |
+| `rescue_rails_reserved` | `true` / `false` | `false` — reserved exceptions are re-raised for Rails to map |
+
+The status code is **not** the envelope's concern: it stays derived from the
+definition (or 500), so body and status cannot drift apart.
+
+**A custom `error_envelope` opts out of the default's verbosity gating.** The
+built-in shape only gates the message by environment on the unregistered path
+(`definition` is `nil`): an unhandled exception's message is written for logs
+and can carry SQL, record values or internal hostnames, so it only reaches
+local environments. A *registered* Trane error's message is included in every
+environment, because registering the error is how a host curates it. A custom
+`error_envelope` that echoes `exception.message` unconditionally is choosing
+to expose that for the unregistered case too, and should mean it.
+
+Referencing an autoloaded constant from these callables is fine, but pass a
+**lambda that delegates**, not a `Method` object: config initializers run before
+Rails sets up the autoloader, so `MyApp::Envelope.method(:error)` raises
+`NameError` at boot while `->(e, d) { MyApp::Envelope.error(e, d) }` resolves at
+call time.
