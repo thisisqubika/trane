@@ -25,7 +25,10 @@ module Trane
     # exception middleware applies its default status mapping. Hosts that
     # want to swallow these into the Trane envelope can register them
     # explicitly via `Trane.errors { error "ActiveRecord::RecordNotFound", ... }`;
-    # the Trane lookup wins over the re-raise path.
+    # the Trane lookup wins over the re-raise path. Alternatively, setting
+    # `Trane.configuration.rescue_rails_reserved = true` swallows every
+    # reserved exception without registering each one by hand — useful for an
+    # API that must answer JSON on every path (default: false).
     #
     # SECURITY NOTE: a registered error's envelope carries the exception's
     # runtime #message, in EVERY environment including production. Framework
@@ -88,7 +91,7 @@ module Trane
             json: Trane.configuration.error_envelope.call(exception, error_def),
             status: error_def.status_code
           )
-        elsif _trane_rails_reserved?(klass)
+        elsif _trane_rails_reserved?(klass) && !Trane.configuration.rescue_rails_reserved
           raise exception
         else
           _trane_unhandled_error(exception)

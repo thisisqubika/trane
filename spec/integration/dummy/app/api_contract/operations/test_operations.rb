@@ -53,3 +53,10 @@ end
 Trane.operation :boom do
   summary "Raises an unregistered error, unconditionally"
 end
+
+# Dedicated for the same reason as :boom above — reusing :list_users here would
+# collide with the /users route's auto-generated :as name at boot. The action
+# raises before rendering, so the operation's shape is irrelevant.
+Trane.operation :reserved do
+  summary "Raises a Rails-reserved exception, unconditionally"
+end

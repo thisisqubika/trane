@@ -39,5 +39,10 @@ class TestController < ApplicationController
     raise ArgumentError, "raw detail"
   end
 
+  # In rescue_responses, so trane re-raises it by default and Rails maps it to 400.
+  def reserved
+    params.require(:nope)
+  end
+
   UserStruct = Struct.new(:id, :name, :email, :nickname, keyword_init: true)
 end

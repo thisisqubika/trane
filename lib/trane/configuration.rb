@@ -123,6 +123,23 @@ module Trane
       @error_envelope = value
     end
 
+    # Whether a Rails-reserved exception (one in
+    # ActionDispatch::ExceptionWrapper.rescue_responses) without a registered
+    # Trane error is re-raised (false, the default — Rails' own middleware
+    # applies its status mapping) or served through the configured error
+    # envelope as an unhandled error (true).
+    def rescue_rails_reserved
+      @rescue_rails_reserved.nil? ? false : @rescue_rails_reserved
+    end
+
+    def rescue_rails_reserved=(value)
+      raise FrozenError, "Trane::Configuration is frozen; cannot modify rescue_rails_reserved after boot" if @frozen
+      unless value == true || value == false
+        raise Trane::Error, "rescue_rails_reserved must be true or false (got #{value.inspect})"
+      end
+      @rescue_rails_reserved = value
+    end
+
     # Returns the effective strict mode for the current environment.
     #
     # @return [Symbol] :raise, :log, or :ignore
@@ -167,12 +184,13 @@ module Trane
     end
 
     def reset!
-      @strict_mode          = nil
-      @contracts_paths      = nil
-      @on_missing_operation = nil
-      @success_envelope     = nil
-      @error_envelope       = nil
-      @frozen               = false
+      @strict_mode           = nil
+      @contracts_paths       = nil
+      @on_missing_operation  = nil
+      @success_envelope      = nil
+      @error_envelope        = nil
+      @rescue_rails_reserved = nil
+      @frozen                = false
     end
 
     # Internal — full state snapshot/restore for Trane::Testing.
@@ -181,22 +199,24 @@ module Trane
     # (instead of silently losing it across a with_configuration block).
     def _dump_state
       {
-        strict_mode:          @strict_mode,
-        contracts_paths:      @contracts_paths,
-        on_missing_operation: @on_missing_operation,
-        success_envelope:     @success_envelope,
-        error_envelope:       @error_envelope,
-        frozen:               @frozen
+        strict_mode:           @strict_mode,
+        contracts_paths:       @contracts_paths,
+        on_missing_operation:  @on_missing_operation,
+        success_envelope:      @success_envelope,
+        error_envelope:        @error_envelope,
+        rescue_rails_reserved: @rescue_rails_reserved,
+        frozen:                @frozen
       }
     end
 
     def _restore_state!(state)
-      @strict_mode          = state[:strict_mode]
-      @contracts_paths      = state[:contracts_paths]
-      @on_missing_operation = state[:on_missing_operation]
-      @success_envelope     = state[:success_envelope]
-      @error_envelope       = state[:error_envelope]
-      @frozen               = state[:frozen]
+      @strict_mode           = state[:strict_mode]
+      @contracts_paths       = state[:contracts_paths]
+      @on_missing_operation  = state[:on_missing_operation]
+      @success_envelope      = state[:success_envelope]
+      @error_envelope        = state[:error_envelope]
+      @rescue_rails_reserved = state[:rescue_rails_reserved]
+      @frozen                = state[:frozen]
     end
   end
 end

@@ -199,6 +199,24 @@ RSpec.describe Trane::Configuration do
     end
   end
 
+  describe "#rescue_rails_reserved" do
+    it "defaults to false" do
+      expect(described_class.new.rescue_rails_reserved).to be(false)
+    end
+
+    it "accepts a boolean" do
+      config = described_class.new
+      config.rescue_rails_reserved = true
+
+      expect(config.rescue_rails_reserved).to be(true)
+    end
+
+    it "rejects a non-boolean" do
+      expect { described_class.new.rescue_rails_reserved = :yes }
+        .to raise_error(Trane::Error, /must be true or false/)
+    end
+  end
+
   describe "freeze behavior" do
     before { described_class.instance.reset! }
 

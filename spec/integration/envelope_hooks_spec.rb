@@ -72,4 +72,24 @@ RSpec.describe "Configurable envelopes", type: :integration do
 
     expect(JSON.parse(last_response.body)["errors"].first["key"]).to eq("UserNotFound")
   end
+
+  it "re-raises a Rails-reserved exception by default, letting Rails map it" do
+    with_error_envelope do
+      get "/dummy-app/api/reserved"
+
+      expect(last_response.status).to eq(400)
+      expect(last_response.body).not_to include("messages")
+    end
+  end
+
+  it "serves it through the envelope when the host opts in" do
+    Trane::Testing.with_configuration(strict_mode: :ignore, error_envelope: error_envelope,
+                                      rescue_rails_reserved: true) do
+      get "/dummy-app/api/reserved"
+
+      expect(last_response.status).to eq(500)
+      expect(JSON.parse(last_response.body)["messages"].first["key"])
+        .to eq("ActionController::ParameterMissing")
+    end
+  end
 end
