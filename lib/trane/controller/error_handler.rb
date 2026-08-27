@@ -85,7 +85,7 @@ module Trane
 
         if error_def
           render(
-            json: { errors: [ { key: error_def.key.to_s, message: exception.message } ] },
+            json: Trane.configuration.error_envelope.call(exception, error_def),
             status: error_def.status_code
           )
         elsif _trane_rails_reserved?(klass)
@@ -136,33 +136,16 @@ module Trane
         klass.ancestors.any? { |ancestor| names.include?(ancestor.name) }
       end
 
-      # Verbose output is allow-listed to LOCAL environments (development
-      # and test, via Rails.env.local?) rather than deny-listed against
-      # production: a custom environment (staging, uat, preprod) must get
-      # the generic message by default. Exception messages are written by
-      # libraries that assume a log audience — they can carry SQL, record
-      # values, or internal hostnames — and this rescue_from renders before
-      # Rails' exception middleware, so the host's
-      # consider_all_requests_local setting cannot protect these responses.
+      # The report is NOT the envelope's concern and stays unconditional: this
+      # rescue_from runs before Rails' exception-reporting middleware, so
+      # without it a 500 in production leaves no log line and no tracker event.
       def _trane_unhandled_error(exception)
         _trane_report_unhandled(exception)
 
-        if defined?(Rails) && Rails.env.local?
-          render(
-            json: {
-              errors: [ {
-                key: "InternalServerError",
-                message: "#{exception.class}: #{exception.message}"
-              } ]
-            },
-            status: :internal_server_error
-          )
-        else
-          render(
-            json: { errors: [ { key: "InternalServerError", message: "An unexpected error occurred" } ] },
-            status: :internal_server_error
-          )
-        end
+        render(
+          json: Trane.configuration.error_envelope.call(exception, nil),
+          status: :internal_server_error
+        )
       end
     end
   end

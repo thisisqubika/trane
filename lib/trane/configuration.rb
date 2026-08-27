@@ -19,6 +19,27 @@ module Trane
     # default: the response is exactly what the contract declares.
     DEFAULT_SUCCESS_ENVELOPE = ->(body) { body }
 
+    # Builds the response body for a rescued exception. Receives the exception
+    # and the resolved ErrorDefinition, or nil when no error is registered for
+    # it. The status code is NOT the hook's concern: the handler derives it from
+    # the definition (or 500), so a host cannot accidentally decouple body and
+    # status.
+    #
+    # The default reproduces the built-in shape, verbosity gating included:
+    # exception messages are written for a log audience and can carry SQL,
+    # record values or internal hostnames, so only local environments see them.
+    DEFAULT_ERROR_ENVELOPE = lambda do |exception, definition|
+      if definition
+        { errors: [ { key: definition.key.to_s, message: exception.message } ] }
+      elsif defined?(Rails) && Rails.env.local?
+        { errors: [ { key: "InternalServerError",
+                      message: "#{exception.class}: #{exception.message}" } ] }
+      else
+        { errors: [ { key: "InternalServerError",
+                      message: "An unexpected error occurred" } ] }
+      end
+    end
+
     attr_reader :strict_mode
 
     # Returns the process-level Configuration instance via the Trane shim.
@@ -90,6 +111,18 @@ module Trane
       @success_envelope = value
     end
 
+    def error_envelope
+      @error_envelope || DEFAULT_ERROR_ENVELOPE
+    end
+
+    def error_envelope=(value)
+      raise FrozenError, "Trane::Configuration is frozen; cannot modify error_envelope after boot" if @frozen
+      unless value.respond_to?(:call)
+        raise Trane::Error, "error_envelope must respond to #call (got #{value.inspect})"
+      end
+      @error_envelope = value
+    end
+
     # Returns the effective strict mode for the current environment.
     #
     # @return [Symbol] :raise, :log, or :ignore
@@ -138,6 +171,7 @@ module Trane
       @contracts_paths      = nil
       @on_missing_operation = nil
       @success_envelope     = nil
+      @error_envelope       = nil
       @frozen               = false
     end
 
@@ -151,6 +185,7 @@ module Trane
         contracts_paths:      @contracts_paths,
         on_missing_operation: @on_missing_operation,
         success_envelope:     @success_envelope,
+        error_envelope:       @error_envelope,
         frozen:               @frozen
       }
     end
@@ -160,6 +195,7 @@ module Trane
       @contracts_paths      = state[:contracts_paths]
       @on_missing_operation = state[:on_missing_operation]
       @success_envelope     = state[:success_envelope]
+      @error_envelope       = state[:error_envelope]
       @frozen               = state[:frozen]
     end
   end

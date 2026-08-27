@@ -34,5 +34,10 @@ class TestController < ApplicationController
     render contract: { user: UserStruct.new(**user_data) }, status: :created
   end
 
+  # No Trane error is registered for ArgumentError, so this exercises the unhandled path.
+  def boom
+    raise ArgumentError, "raw detail"
+  end
+
   UserStruct = Struct.new(:id, :name, :email, :nickname, keyword_init: true)
 end

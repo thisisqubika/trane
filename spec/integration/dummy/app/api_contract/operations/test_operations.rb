@@ -44,3 +44,12 @@ Trane.operation :create_user do
     key :UserInvalid
   end
 end
+
+# Dedicated so the route can carry its own `:as` route name — Trane's routing
+# extension defaults `:as` to the operation name, and reusing :list_users here
+# would collide with the /users route's auto-generated name at boot
+# ("Invalid route name, already in use"). The action raises before rendering,
+# so the operation's shape (no request/response) is irrelevant.
+Trane.operation :boom do
+  summary "Raises an unregistered error, unconditionally"
+end
