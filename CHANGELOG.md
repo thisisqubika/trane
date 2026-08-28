@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0]
+## [0.2.0] - 2026-08-27
 
 ### Added
 
@@ -19,7 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `{"errors":[{"key","message"}]}` shape, verbosity gating included.
 - `rescue_rails_reserved` (set via `Trane.configure`): when `true`,
   Rails-reserved exceptions with no registered error are served through the
-  envelope instead of being re-raised. Defaults to `false`.
+  envelope instead of being re-raised, as a plain 500 — the reserved
+  exception's native status mapping (e.g. `ActiveRecord::RecordNotFound`'s
+  404) is discarded, not preserved. Defaults to `false`.
 
 No breaking changes: every default reproduces 0.1.0 behaviour exactly.
 
@@ -51,4 +53,5 @@ First public release.
   metadata raises by default (`on_missing_operation` opt-out), and
   configuration setters reject unknown modes.
 
+[0.2.0]: https://github.com/thisisqubika/trane/releases/tag/v0.2.0
 [0.1.0]: https://github.com/thisisqubika/trane/releases/tag/v0.1.0

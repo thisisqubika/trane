@@ -179,10 +179,20 @@ end
 |---|---|---|
 | `success_envelope` | `(Hash) -> Hash` — the serialized response, returning what to encode | identity |
 | `error_envelope` | `(Exception, ErrorDefinition or nil) -> Hash` — `nil` when no error is registered | the `{"errors":[{"key","message"}]}` shape; message gated to local environments only when no error is registered |
-| `rescue_rails_reserved` | `true` / `false` | `false` — reserved exceptions are re-raised for Rails to map |
+| `rescue_rails_reserved` | `true` / `false` | `false` — reserved exceptions are re-raised for Rails to map; `true` serves them through the envelope as a plain 500, discarding their native status mapping |
 
 The status code is **not** the envelope's concern: it stays derived from the
 definition (or 500), so body and status cannot drift apart.
+
+**`rescue_rails_reserved: true` does not preserve the reserved exception's
+usual status.** A Rails-reserved exception with no registered Trane error
+always renders through the envelope as **500** — the "or 500" above, not the
+status Rails' own middleware would have picked. `ActiveRecord::RecordNotFound`
+stays a 404 today only because the default (`false`) re-raises it for Rails to
+map downstream; flipping the flag routes it through the envelope instead, and
+it comes back 500. To keep both the envelope shape and the original status,
+register the exception explicitly instead of relying on this flag:
+`Trane.errors { error "ActiveRecord::RecordNotFound", status_code: 404 }`.
 
 **A custom `error_envelope` opts out of the default's verbosity gating.** The
 built-in shape only gates the message by environment on the unregistered path
