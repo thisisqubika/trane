@@ -142,6 +142,14 @@ module Trane
       # The report is NOT the envelope's concern and stays unconditional: this
       # rescue_from runs before Rails' exception-reporting middleware, so
       # without it a 500 in production leaves no log line and no tracker event.
+      #
+      # That applies to the rescue_rails_reserved path too, and it is why the
+      # report is not skipped there: serving a reserved exception through the
+      # envelope means Rails' middleware never sees it either, so skipping here
+      # would leave no trace at all — strictly less than the re-raising default,
+      # under which ActionDispatch reports it as handled: false / :error. Trane
+      # reports it as handled: true / :warning instead. The event count is the
+      # same; the log line is longer. See docs/wiki/Configuration.md.
       def _trane_unhandled_error(exception)
         _trane_report_unhandled(exception)
 

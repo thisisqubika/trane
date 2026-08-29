@@ -21,7 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Rails-reserved exceptions with no registered error are served through the
   envelope instead of being re-raised, as a plain 500 — the reserved
   exception's native status mapping (e.g. `ActiveRecord::RecordNotFound`'s
-  404) is discarded, not preserved. Defaults to `false`.
+  404) is discarded, not preserved. It also moves their reporting: Rails'
+  exception middleware no longer sees them, so Trane reports them instead, as
+  `handled: true` / `severity: :warning` rather than Rails' `handled: false` /
+  `severity: :error`, and with a longer log line. Same event count, more log
+  volume. Defaults to `false`.
 
 No breaking changes: every default reproduces 0.1.0 behaviour exactly.
 

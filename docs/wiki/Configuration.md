@@ -194,6 +194,23 @@ it comes back 500. To keep both the envelope shape and the original status,
 register the exception explicitly instead of relying on this flag:
 `Trane.errors { error "ActiveRecord::RecordNotFound", status_code: 404 }`.
 
+**It also changes how those exceptions are reported.** Serving a reserved
+exception through the envelope means Rails' own exception middleware never sees
+it, so Trane reports it instead — the flag *moves* the report rather than adding
+one. Measured on the same request, raising `ActionController::ParameterMissing`:
+
+| | `false` | `true` |
+|---|---|---|
+| `Rails.error` reports | 1 — `handled: false`, `severity: :error`, source `application.action_dispatch` | 1 — `handled: true`, `severity: :warning`, source `trane` |
+| Log | `fatal`, 4 lines | `error`, ~21 lines (message plus 20 backtrace frames) |
+
+The event count is unchanged, and the classification is arguably better: a
+tracker weighing `handled` and `severity` sees a handled warning instead of an
+unhandled error. The log line is the real cost — roughly five times longer per
+occurrence. Where a reserved exception is routine rather than exceptional (a
+client walking nonexistent ids), that volume adds up; registering the exception
+explicitly, as above, keeps it off the unhandled path altogether.
+
 **A custom `error_envelope` opts out of the default's verbosity gating.** The
 built-in shape only gates the message by environment on the unregistered path
 (`definition` is `nil`): an unhandled exception's message is written for logs
