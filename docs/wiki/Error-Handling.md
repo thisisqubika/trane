@@ -88,9 +88,17 @@ Hosts that want to swallow these into the Trane envelope can register them
 explicitly (`Trane.errors { error "ActiveRecord::RecordNotFound", ... }`); the
 Trane lookup wins over the re-raise path.
 
+An API that must answer JSON on *every* path can instead set
+[`rescue_rails_reserved`](Configuration.md#response-envelopes) to `true`, which
+swallows every reserved exception without registering each one by hand. It
+costs two things, both documented there: the exception loses its native status
+and comes back as a plain 500, and Rails' exception middleware stops seeing it,
+so Trane reports it instead — same event count, longer log line. Registering
+the exception explicitly is the option that keeps its status.
+
 ## Error response format
 
-All error responses follow this structure:
+This is the **default** structure every error response follows:
 
 ```json
 {
@@ -105,6 +113,13 @@ All error responses follow this structure:
 
 The `message` field is populated from the exception's `.message` method.
 
+A host serving a pre-existing contract can replace this shape entirely with
+[`error_envelope`](Configuration.md#response-envelopes) — a callable receiving
+the exception and its resolved definition, returning whatever body that
+contract requires. Everything below about matching, statuses and the unhandled
+path is unaffected by that choice: the envelope decides the body, never the
+status.
+
 > **Security note:** a registered error's `message` reaches the client in
 > **every** environment, production included. Framework and library exception
 > messages are written for logs and may reveal internals — e.g.
@@ -115,7 +130,8 @@ The `message` field is populated from the exception's `.message` method.
 
 ## Unhandled errors
 
-Exceptions not in the registry return a 500 response:
+Exceptions not in the registry return a 500 response. The **default** envelope
+gates what that response says by environment:
 
 - **Development/Test** (`Rails.env.local?`): includes the exception class and message for debugging.
 - **Any other environment** (production, staging, uat, ...): returns a generic
@@ -123,6 +139,12 @@ Exceptions not in the registry return a 500 response:
   by default — exception messages can carry SQL, record values, or internal
   hostnames, and this handler renders before Rails' exception middleware, so
   `consider_all_requests_local` cannot cover these responses.
+
+A custom [`error_envelope`](Configuration.md#response-envelopes) receives that
+same exception with a `nil` definition and decides the body itself, so it opts
+out of this gating — a host echoing `exception.message` there is choosing to
+expose it everywhere, and should mean it. The 500 status is not the envelope's
+to change.
 
 Before rendering the envelope, the exception is **reported and logged**:
 through `Rails.error.report(exception, handled: true, source: "trane")` (the
