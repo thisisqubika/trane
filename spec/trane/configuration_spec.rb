@@ -215,6 +215,13 @@ RSpec.describe Trane::Configuration do
       expect { described_class.new.rescue_rails_reserved = :yes }
         .to raise_error(Trane::Error, /must be true or false/)
     end
+
+    it "rejects assignment after freeze!" do
+      config = described_class.new
+      config.freeze!
+
+      expect { config.rescue_rails_reserved = true }.to raise_error(FrozenError)
+    end
   end
 
   describe "freeze behavior" do
