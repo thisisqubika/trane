@@ -166,9 +166,19 @@ Trane.configure do |config|
   config.success_envelope = ->(body) { { status: "success" }.merge(body) }
 
   config.error_envelope = lambda do |exception, definition|
-    { status: "error",
-      messages: [ { key: definition ? definition.key.to_s : exception.class.name,
-                    dsc: exception.message } ] }
+    if definition
+      # A registered error: the host curated this message by registering it.
+      key, dsc = definition.key.to_s, exception.message
+    else
+      # Nothing registered. This message was written for a log — it can carry
+      # SQL, record values or internal hostnames — so it only goes out locally.
+      # A fixed key also avoids `exception.class.name`, which is nil for an
+      # anonymous class and would put `null` in the body.
+      key = "InternalServerError"
+      dsc = Rails.env.local? ? exception.message : "An unexpected error occurred"
+    end
+
+    { status: "error", messages: [ { key: key, dsc: dsc } ] }
   end
 
   config.rescue_rails_reserved = true
@@ -228,14 +238,24 @@ occurrence. Where a reserved exception is routine rather than exceptional (a
 client walking nonexistent ids), that volume adds up; registering the exception
 explicitly, as above, keeps it off the unhandled path altogether.
 
-**A custom `error_envelope` opts out of the default's verbosity gating.** The
-built-in shape only gates the message by environment on the unregistered path
-(`definition` is `nil`): an unhandled exception's message is written for logs
-and can carry SQL, record values or internal hostnames, so it only reaches
-local environments. A *registered* Trane error's message is included in every
-environment, because registering the error is how a host curates it. A custom
-`error_envelope` that echoes `exception.message` unconditionally is choosing
-to expose that for the unregistered case too, and should mean it.
+**A custom `error_envelope` opts out of the default's verbosity gating**, so the
+example above puts it back. The built-in shape gates the message by environment
+on the unregistered path (`definition` is `nil`): an unhandled exception's
+message is written for logs and can carry SQL, record values or internal
+hostnames, so it only reaches local environments. A *registered* Trane error's
+message goes out everywhere, because registering the error is how a host
+curates it.
+
+An envelope written as the one-liner
+
+```ruby
+->(exception, definition) { { dsc: exception.message } }   # don't
+```
+
+drops that distinction and echoes an unhandled exception's message in
+production. Some hosts do want exactly that — reproducing a legacy contract
+that behaved the same way is a real reason — but it should be a decision, not
+the shape you inherited from an example.
 
 Referencing an autoloaded constant from these callables is fine, but pass a
 **lambda that delegates**, not a `Method` object: config initializers run before
