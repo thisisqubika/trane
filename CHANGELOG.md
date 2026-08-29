@@ -27,6 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `severity: :error`, and with a longer log line. Same event count, more log
   volume. Defaults to `false`.
 
+Both envelope callables must return a Hash, and Trane checks rather than
+encoding whatever comes back. A `success_envelope` that returns something else
+raises `Trane::Error`; an `error_envelope` that returns something else, or that
+raises, degrades to the built-in shape and logs a warning — it cannot raise,
+because it runs inside a `rescue_from` and would escape to Rails' static error
+page.
+
 No breaking changes: every default reproduces 0.1.0 behaviour exactly.
 
 ## [0.1.0] - 2026-08-14

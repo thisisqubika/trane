@@ -88,7 +88,7 @@ module Trane
 
         if error_def
           render(
-            json: Trane.configuration.error_envelope.call(exception, error_def),
+            json: _trane_error_body(exception, error_def),
             status: error_def.status_code
           )
         elsif _trane_rails_reserved?(klass) && !Trane.configuration.rescue_rails_reserved
@@ -154,9 +154,37 @@ module Trane
         _trane_report_unhandled(exception)
 
         render(
-          json: Trane.configuration.error_envelope.call(exception, nil),
+          json: _trane_error_body(exception, nil),
           status: :internal_server_error
         )
+      end
+
+      # Applies error_envelope, degrading to the built-in shape when the host's
+      # callable misbehaves.
+      #
+      # It does NOT raise, unlike the success path. We are already inside a
+      # rescue_from handler, and an exception raised in one is not re-dispatched
+      # to another: it propagates to Rails' exception middleware, so the client
+      # gets the static error page — HTML, or an empty body where the host has
+      # no public/500.html. That is precisely the outcome a host configuring an
+      # envelope is trying to avoid, so a broken envelope must not cause it.
+      # Falling back keeps the response JSON and puts the misconfiguration in
+      # the log, where it is actionable.
+      def _trane_error_body(exception, definition)
+        body = Trane.configuration.error_envelope.call(exception, definition)
+        return body if body.is_a?(::Hash)
+
+        Trane.log_warning(
+          "[Trane] error_envelope returned #{body.class}, expected Hash; " \
+          "serving the built-in error shape instead."
+        )
+        Trane::Configuration::DEFAULT_ERROR_ENVELOPE.call(exception, definition)
+      rescue StandardError => e
+        Trane.log_warning(
+          "[Trane] error_envelope raised #{e.class}: #{e.message}; " \
+          "serving the built-in error shape instead."
+        )
+        Trane::Configuration::DEFAULT_ERROR_ENVELOPE.call(exception, definition)
       end
     end
   end

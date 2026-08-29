@@ -184,6 +184,23 @@ end
 The status code is **not** the envelope's concern: it stays derived from the
 definition (or 500), so body and status cannot drift apart.
 
+**Both callables must return a Hash**, and Trane checks. `JSON.generate` would
+happily encode a `nil`, a String or an Array, so an envelope with the wrong
+return type would otherwise serve `null` — or a bare string — with the original
+status and no signal anywhere. What happens when one misbehaves differs by
+path, and deliberately:
+
+- **`success_envelope`** raises `Trane::Error` naming the offending type. That
+  is safe to raise: it happens during the action, so the host's `rescue_from`
+  turns it into a reported 500 like any other bug.
+- **`error_envelope`** never raises. It already runs inside a `rescue_from`
+  handler, and an exception raised in one is not re-dispatched — it reaches
+  Rails' exception middleware, and the client gets the static error page, which
+  is the outcome configuring an envelope is meant to prevent. So a bad return
+  value *or* an exception from the callable degrades to the built-in shape,
+  keeping the response JSON and its status, and logs a warning naming the
+  problem.
+
 **`rescue_rails_reserved: true` does not preserve the reserved exception's
 usual status.** A Rails-reserved exception with no registered Trane error
 always renders through the envelope as **500** — the "or 500" above, not the

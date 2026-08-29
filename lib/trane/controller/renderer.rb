@@ -72,7 +72,7 @@ module Trane
           strict      = Trane.configuration.effective_strict_mode
           serializer  = registry.compiled_serializer_for(response_def, strict)
           hash        = serializer.serialize(contract_data, extra_attributes: extra_attrs)
-          hash        = Trane.configuration.success_envelope.call(hash)
+          hash        = _trane_enveloped(hash)
 
           body = ::JSON.generate(hash)
           super(
@@ -92,6 +92,22 @@ module Trane
       def _trane_operation_name
         op = request.path_parameters[:_trane_operation]
         op&.to_sym
+      end
+
+      # Applies success_envelope and insists the result is still a Hash.
+      # `JSON.generate` happily encodes a nil, a String or an Array, so an
+      # envelope with a wrong return type would serve `null` — or a bare
+      # string — with a 200 and no signal at all. Raising instead is the
+      # fail-loud default the rest of the gem holds to, and it is safe here:
+      # Trane::Error is a StandardError, so the host's own rescue_from turns
+      # it into a reported 500 rather than letting it escape.
+      def _trane_enveloped(hash)
+        result = Trane.configuration.success_envelope.call(hash)
+        return result if result.is_a?(::Hash)
+
+        raise Trane::Error,
+              "Trane: success_envelope must return a Hash, got #{result.class}. " \
+              "It receives the serialized response hash and returns the hash to encode."
       end
 
       def _trane_log_missing_operation

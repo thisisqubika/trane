@@ -92,4 +92,50 @@ RSpec.describe "Configurable envelopes", type: :integration do
         .to eq("ActionController::ParameterMissing")
     end
   end
+
+  # JSON.generate encodes a nil, a String or an Array without complaint, so an envelope with the
+  # wrong return type would otherwise serve `null` — or a bare string — with the original status
+  # and no signal anywhere.
+  describe "a success_envelope that does not return a Hash" do
+    [ nil, "not a hash", [ 1, 2 ] ].each do |bad|
+      it "fails loudly for #{bad.class}" do
+        Trane::Testing.with_configuration(strict_mode: :ignore,
+                                          success_envelope: ->(_body) { bad }) do
+          get "/dummy-app/api/users/1"
+
+          expect(last_response.status).to eq(500)
+          expect(JSON.parse(last_response.body)["errors"].first["message"])
+            .to include("success_envelope must return a Hash", bad.class.to_s)
+        end
+      end
+    end
+  end
+
+  # The error path cannot raise: it runs inside a rescue_from, and an exception raised there
+  # reaches Rails' exception middleware, so the client gets the static error page — the very
+  # thing a host configuring an envelope is avoiding. It degrades to the built-in shape instead,
+  # keeping the response JSON and the status intact.
+  describe "an error_envelope that misbehaves" do
+    it "falls back to the built-in shape when it returns a non-Hash" do
+      Trane::Testing.with_configuration(strict_mode: :ignore,
+                                        error_envelope: ->(_e, _d) { nil }) do
+        get "/dummy-app/api/users/999"
+
+        expect(last_response.status).to eq(404)
+        expect(JSON.parse(last_response.body)["errors"].first["key"]).to eq("UserNotFound")
+      end
+    end
+
+    it "falls back to the built-in shape when it raises" do
+      Trane::Testing.with_configuration(
+        strict_mode: :ignore,
+        error_envelope: ->(_e, _d) { raise "the host's envelope is broken" }
+      ) do
+        get "/dummy-app/api/users/999"
+
+        expect(last_response.status).to eq(404)
+        expect(JSON.parse(last_response.body)["errors"].first["key"]).to eq("UserNotFound")
+      end
+    end
+  end
 end
