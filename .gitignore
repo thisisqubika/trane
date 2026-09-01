@@ -3,3 +3,10 @@ docs/superpowers/
 .superpowers/
 spec/integration/dummy/log/*.log
 gemfiles/*.gemfile.lock
+
+# Build artifacts from bundler/gem_tasks: `rake build` writes pkg/, and
+# `rake build:checksum` writes checksums/. A manual `gem build` drops the .gem
+# in the repo root.
+/pkg/
+/checksums/
+*.gem
