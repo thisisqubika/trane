@@ -10,10 +10,12 @@ module Trane
     # restores the original state. Guarantees restore even when the block
     # raises.
     #
-    # This helper does not touch the route set: `strict_mode` — the only
-    # attribute settable via `Trane.configure` — is read when a response is
-    # rendered (Trane::Controller::Renderer), never when routes are drawn. The
-    # API name is not configurable at all; it is Rails.application.name.
+    # This helper does not touch the route set: none of the attributes
+    # settable via `Trane.configure` (`strict_mode`, `on_missing_operation`,
+    # `success_envelope`, `error_envelope`, `rescue_rails_reserved`) are read
+    # at route-draw time — `strict_mode`, for instance, is read when a
+    # response is rendered (Trane::Controller::Renderer). The API name is not
+    # configurable at all; it is Rails.application.name.
     #
     # `contracts_paths` is also configuration state (set from
     # `config/application.rb` via the internal `_set_contracts_paths!`, not

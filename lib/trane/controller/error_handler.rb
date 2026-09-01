@@ -25,7 +25,10 @@ module Trane
     # exception middleware applies its default status mapping. Hosts that
     # want to swallow these into the Trane envelope can register them
     # explicitly via `Trane.errors { error "ActiveRecord::RecordNotFound", ... }`;
-    # the Trane lookup wins over the re-raise path.
+    # the Trane lookup wins over the re-raise path. Alternatively, setting
+    # `Trane.configuration.rescue_rails_reserved = true` swallows every
+    # reserved exception without registering each one by hand — useful for an
+    # API that must answer JSON on every path (default: false).
     #
     # SECURITY NOTE: a registered error's envelope carries the exception's
     # runtime #message, in EVERY environment including production. Framework
@@ -85,10 +88,10 @@ module Trane
 
         if error_def
           render(
-            json: { errors: [ { key: error_def.key.to_s, message: exception.message } ] },
+            json: _trane_error_body(exception, error_def),
             status: error_def.status_code
           )
-        elsif _trane_rails_reserved?(klass)
+        elsif _trane_rails_reserved?(klass) && !Trane.configuration.rescue_rails_reserved
           raise exception
         else
           _trane_unhandled_error(exception)
@@ -136,33 +139,52 @@ module Trane
         klass.ancestors.any? { |ancestor| names.include?(ancestor.name) }
       end
 
-      # Verbose output is allow-listed to LOCAL environments (development
-      # and test, via Rails.env.local?) rather than deny-listed against
-      # production: a custom environment (staging, uat, preprod) must get
-      # the generic message by default. Exception messages are written by
-      # libraries that assume a log audience — they can carry SQL, record
-      # values, or internal hostnames — and this rescue_from renders before
-      # Rails' exception middleware, so the host's
-      # consider_all_requests_local setting cannot protect these responses.
+      # The report is NOT the envelope's concern and stays unconditional: this
+      # rescue_from runs before Rails' exception-reporting middleware, so
+      # without it a 500 in production leaves no log line and no tracker event.
+      #
+      # That applies to the rescue_rails_reserved path too, and it is why the
+      # report is not skipped there: serving a reserved exception through the
+      # envelope means Rails' middleware never sees it either, so skipping here
+      # would leave no trace at all — strictly less than the re-raising default,
+      # under which ActionDispatch reports it as handled: false / :error. Trane
+      # reports it as handled: true / :warning instead. The event count is the
+      # same; the log line is longer. See docs/wiki/Configuration.md.
       def _trane_unhandled_error(exception)
         _trane_report_unhandled(exception)
 
-        if defined?(Rails) && Rails.env.local?
-          render(
-            json: {
-              errors: [ {
-                key: "InternalServerError",
-                message: "#{exception.class}: #{exception.message}"
-              } ]
-            },
-            status: :internal_server_error
-          )
-        else
-          render(
-            json: { errors: [ { key: "InternalServerError", message: "An unexpected error occurred" } ] },
-            status: :internal_server_error
-          )
-        end
+        render(
+          json: _trane_error_body(exception, nil),
+          status: :internal_server_error
+        )
+      end
+
+      # Applies error_envelope, degrading to the built-in shape when the host's
+      # callable misbehaves.
+      #
+      # It does NOT raise, unlike the success path. We are already inside a
+      # rescue_from handler, and an exception raised in one is not re-dispatched
+      # to another: it propagates to Rails' exception middleware, so the client
+      # gets the static error page — HTML, or an empty body where the host has
+      # no public/500.html. That is precisely the outcome a host configuring an
+      # envelope is trying to avoid, so a broken envelope must not cause it.
+      # Falling back keeps the response JSON and puts the misconfiguration in
+      # the log, where it is actionable.
+      def _trane_error_body(exception, definition)
+        body = Trane.configuration.error_envelope.call(exception, definition)
+        return body if body.is_a?(::Hash)
+
+        Trane.log_warning(
+          "[Trane] error_envelope returned #{body.class}, expected Hash; " \
+          "serving the built-in error shape instead."
+        )
+        Trane::Configuration::DEFAULT_ERROR_ENVELOPE.call(exception, definition)
+      rescue StandardError => e
+        Trane.log_warning(
+          "[Trane] error_envelope raised #{e.class}: #{e.message}; " \
+          "serving the built-in error shape instead."
+        )
+        Trane::Configuration::DEFAULT_ERROR_ENVELOPE.call(exception, definition)
       end
     end
   end

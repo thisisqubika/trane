@@ -34,5 +34,15 @@ class TestController < ApplicationController
     render contract: { user: UserStruct.new(**user_data) }, status: :created
   end
 
+  # No Trane error is registered for ArgumentError, so this exercises the unhandled path.
+  def boom
+    raise ArgumentError, "raw detail"
+  end
+
+  # In rescue_responses, so trane re-raises it by default and Rails maps it to 400.
+  def reserved
+    params.require(:nope)
+  end
+
   UserStruct = Struct.new(:id, :name, :email, :nickname, keyword_init: true)
 end

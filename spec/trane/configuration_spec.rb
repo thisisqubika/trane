@@ -128,6 +128,102 @@ RSpec.describe Trane::Configuration do
     end
   end
 
+  describe "#success_envelope" do
+    it "defaults to identity" do
+      config = described_class.new
+
+      expect(config.success_envelope.call({ a: 1 })).to eq({ a: 1 })
+    end
+
+    it "accepts any callable" do
+      config = described_class.new
+      config.success_envelope = ->(body) { { status: "success" }.merge(body) }
+
+      expect(config.success_envelope.call({ a: 1 })).to eq({ status: "success", a: 1 })
+    end
+
+    it "rejects a value that does not respond to #call" do
+      config = described_class.new
+
+      expect { config.success_envelope = "nope" }
+        .to raise_error(Trane::Error, /must respond to #call/)
+    end
+
+    it "rejects assignment after freeze!" do
+      config = described_class.new
+      config.freeze!
+
+      expect { config.success_envelope = ->(b) { b } }.to raise_error(FrozenError)
+    end
+
+    it "survives a with_configuration round trip" do
+      config   = described_class.new
+      envelope = ->(body) { body }
+      config.success_envelope = envelope
+      snapshot = config._dump_state
+      config.reset!
+      config._restore_state!(snapshot)
+
+      expect(config.success_envelope).to be(envelope)
+    end
+  end
+
+  describe "#error_envelope" do
+    it "defaults to the errors array shape for a registered error" do
+      config     = described_class.new
+      definition = Trane::ErrorDefinition.new(key: "UserNotFound", status_code: 404)
+
+      expect(config.error_envelope.call(StandardError.new("boom"), definition))
+        .to eq({ errors: [ { key: "UserNotFound", message: "boom" } ] })
+    end
+
+    it "defaults to the generic shape when there is no definition" do
+      config = described_class.new
+
+      expect(config.error_envelope.call(StandardError.new("boom"), nil)[:errors].first[:key])
+        .to eq("InternalServerError")
+    end
+
+    it "rejects a value that does not respond to #call" do
+      config = described_class.new
+
+      expect { config.error_envelope = :nope }
+        .to raise_error(Trane::Error, /must respond to #call/)
+    end
+
+    it "rejects assignment after freeze!" do
+      config = described_class.new
+      config.freeze!
+
+      expect { config.error_envelope = ->(e, d) { {} } }.to raise_error(FrozenError)
+    end
+  end
+
+  describe "#rescue_rails_reserved" do
+    it "defaults to false" do
+      expect(described_class.new.rescue_rails_reserved).to be(false)
+    end
+
+    it "accepts a boolean" do
+      config = described_class.new
+      config.rescue_rails_reserved = true
+
+      expect(config.rescue_rails_reserved).to be(true)
+    end
+
+    it "rejects a non-boolean" do
+      expect { described_class.new.rescue_rails_reserved = :yes }
+        .to raise_error(Trane::Error, /must be true or false/)
+    end
+
+    it "rejects assignment after freeze!" do
+      config = described_class.new
+      config.freeze!
+
+      expect { config.rescue_rails_reserved = true }.to raise_error(FrozenError)
+    end
+  end
+
   describe "freeze behavior" do
     before { described_class.instance.reset! }
 

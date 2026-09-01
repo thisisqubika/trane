@@ -14,6 +14,32 @@ module Trane
     # the route did not declare `contract: { operation: ... }`).
     ON_MISSING_OPERATION_MODES = %i[raise log fallback].freeze
 
+    # Applied to the serialized response hash immediately before it is encoded,
+    # so a host can wrap every success payload in its own envelope. Identity by
+    # default: the response is exactly what the contract declares.
+    DEFAULT_SUCCESS_ENVELOPE = ->(body) { body }
+
+    # Builds the response body for a rescued exception. Receives the exception
+    # and the resolved ErrorDefinition, or nil when no error is registered for
+    # it. The status code is NOT the hook's concern: the handler derives it from
+    # the definition (or 500), so a host cannot accidentally decouple body and
+    # status.
+    #
+    # The default reproduces the built-in shape, verbosity gating included:
+    # exception messages are written for a log audience and can carry SQL,
+    # record values or internal hostnames, so only local environments see them.
+    DEFAULT_ERROR_ENVELOPE = lambda do |exception, definition|
+      if definition
+        { errors: [ { key: definition.key.to_s, message: exception.message } ] }
+      elsif defined?(Rails) && Rails.env.local?
+        { errors: [ { key: "InternalServerError",
+                      message: "#{exception.class}: #{exception.message}" } ] }
+      else
+        { errors: [ { key: "InternalServerError",
+                      message: "An unexpected error occurred" } ] }
+      end
+    end
+
     attr_reader :strict_mode
 
     # Returns the process-level Configuration instance via the Trane shim.
@@ -73,6 +99,47 @@ module Trane
       @on_missing_operation = value
     end
 
+    def success_envelope
+      @success_envelope || DEFAULT_SUCCESS_ENVELOPE
+    end
+
+    def success_envelope=(value)
+      raise FrozenError, "Trane::Configuration is frozen; cannot modify success_envelope after boot" if @frozen
+      unless value.respond_to?(:call)
+        raise Trane::Error, "success_envelope must respond to #call (got #{value.inspect})"
+      end
+      @success_envelope = value
+    end
+
+    def error_envelope
+      @error_envelope || DEFAULT_ERROR_ENVELOPE
+    end
+
+    def error_envelope=(value)
+      raise FrozenError, "Trane::Configuration is frozen; cannot modify error_envelope after boot" if @frozen
+      unless value.respond_to?(:call)
+        raise Trane::Error, "error_envelope must respond to #call (got #{value.inspect})"
+      end
+      @error_envelope = value
+    end
+
+    # Whether a Rails-reserved exception (one in
+    # ActionDispatch::ExceptionWrapper.rescue_responses) without a registered
+    # Trane error is re-raised (false, the default — Rails' own middleware
+    # applies its status mapping) or served through the configured error
+    # envelope as an unhandled error (true).
+    def rescue_rails_reserved
+      @rescue_rails_reserved.nil? ? false : @rescue_rails_reserved
+    end
+
+    def rescue_rails_reserved=(value)
+      raise FrozenError, "Trane::Configuration is frozen; cannot modify rescue_rails_reserved after boot" if @frozen
+      unless value == true || value == false
+        raise Trane::Error, "rescue_rails_reserved must be true or false (got #{value.inspect})"
+      end
+      @rescue_rails_reserved = value
+    end
+
     # Returns the effective strict mode for the current environment.
     #
     # @return [Symbol] :raise, :log, or :ignore
@@ -117,10 +184,13 @@ module Trane
     end
 
     def reset!
-      @strict_mode          = nil
-      @contracts_paths      = nil
-      @on_missing_operation = nil
-      @frozen               = false
+      @strict_mode           = nil
+      @contracts_paths       = nil
+      @on_missing_operation  = nil
+      @success_envelope      = nil
+      @error_envelope        = nil
+      @rescue_rails_reserved = nil
+      @frozen                = false
     end
 
     # Internal — full state snapshot/restore for Trane::Testing.
@@ -129,18 +199,24 @@ module Trane
     # (instead of silently losing it across a with_configuration block).
     def _dump_state
       {
-        strict_mode:          @strict_mode,
-        contracts_paths:      @contracts_paths,
-        on_missing_operation: @on_missing_operation,
-        frozen:               @frozen
+        strict_mode:           @strict_mode,
+        contracts_paths:       @contracts_paths,
+        on_missing_operation:  @on_missing_operation,
+        success_envelope:      @success_envelope,
+        error_envelope:        @error_envelope,
+        rescue_rails_reserved: @rescue_rails_reserved,
+        frozen:                @frozen
       }
     end
 
     def _restore_state!(state)
-      @strict_mode          = state[:strict_mode]
-      @contracts_paths      = state[:contracts_paths]
-      @on_missing_operation = state[:on_missing_operation]
-      @frozen               = state[:frozen]
+      @strict_mode           = state[:strict_mode]
+      @contracts_paths       = state[:contracts_paths]
+      @on_missing_operation  = state[:on_missing_operation]
+      @success_envelope      = state[:success_envelope]
+      @error_envelope        = state[:error_envelope]
+      @rescue_rails_reserved = state[:rescue_rails_reserved]
+      @frozen                = state[:frozen]
     end
   end
 end

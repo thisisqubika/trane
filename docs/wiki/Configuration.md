@@ -154,3 +154,111 @@ drawn.
 
 To reset all Trane state between tests (registry, configuration, and docs
 cache in one call), use `Trane.reset!` — see [Architecture](Architecture.md).
+
+## Response envelopes
+
+Hosts serving a pre-existing contract can wrap every response in their own
+envelope instead of Trane's default shape.
+
+```ruby
+# config/initializers/trane.rb
+Trane.configure do |config|
+  config.success_envelope = ->(body) { { status: "success" }.merge(body) }
+
+  config.error_envelope = lambda do |exception, definition|
+    if definition
+      # A registered error: the host curated this message by registering it.
+      key, dsc = definition.key.to_s, exception.message
+    else
+      # Nothing registered. This message was written for a log — it can carry
+      # SQL, record values or internal hostnames — so it only goes out locally.
+      # A fixed key also avoids `exception.class.name`, which is nil for an
+      # anonymous class and would put `null` in the body.
+      key = "InternalServerError"
+      dsc = Rails.env.local? ? exception.message : "An unexpected error occurred"
+    end
+
+    { status: "error", messages: [ { key: key, dsc: dsc } ] }
+  end
+
+  config.rescue_rails_reserved = true
+end
+```
+
+| Option | Signature | Default |
+|---|---|---|
+| `success_envelope` | `(Hash) -> Hash` — the serialized response, returning what to encode | identity |
+| `error_envelope` | `(Exception, ErrorDefinition or nil) -> Hash` — `nil` when no error is registered | the `{"errors":[{"key","message"}]}` shape; message gated to local environments only when no error is registered |
+| `rescue_rails_reserved` | `true` / `false` | `false` — reserved exceptions are re-raised for Rails to map; `true` serves them through the envelope as a plain 500, discarding their native status mapping |
+
+The status code is **not** the envelope's concern: it stays derived from the
+definition (or 500), so body and status cannot drift apart.
+
+**Both callables must return a Hash**, and Trane checks. `JSON.generate` would
+happily encode a `nil`, a String or an Array, so an envelope with the wrong
+return type would otherwise serve `null` — or a bare string — with the original
+status and no signal anywhere. What happens when one misbehaves differs by
+path, and deliberately:
+
+- **`success_envelope`** raises `Trane::Error` naming the offending type. That
+  is safe to raise: it happens during the action, so the host's `rescue_from`
+  turns it into a reported 500 like any other bug.
+- **`error_envelope`** never raises. It already runs inside a `rescue_from`
+  handler, and an exception raised in one is not re-dispatched — it reaches
+  Rails' exception middleware, and the client gets the static error page, which
+  is the outcome configuring an envelope is meant to prevent. So a bad return
+  value *or* an exception from the callable degrades to the built-in shape,
+  keeping the response JSON and its status, and logs a warning naming the
+  problem.
+
+**`rescue_rails_reserved: true` does not preserve the reserved exception's
+usual status.** A Rails-reserved exception with no registered Trane error
+always renders through the envelope as **500** — the "or 500" above, not the
+status Rails' own middleware would have picked. `ActiveRecord::RecordNotFound`
+stays a 404 today only because the default (`false`) re-raises it for Rails to
+map downstream; flipping the flag routes it through the envelope instead, and
+it comes back 500. To keep both the envelope shape and the original status,
+register the exception explicitly instead of relying on this flag:
+`Trane.errors { error "ActiveRecord::RecordNotFound", status_code: 404 }`.
+
+**It also changes how those exceptions are reported.** Serving a reserved
+exception through the envelope means Rails' own exception middleware never sees
+it, so Trane reports it instead — the flag *moves* the report rather than adding
+one. Measured on the same request, raising `ActionController::ParameterMissing`:
+
+| | `false` | `true` |
+|---|---|---|
+| `Rails.error` reports | 1 — `handled: false`, `severity: :error`, source `application.action_dispatch` | 1 — `handled: true`, `severity: :warning`, source `trane` |
+| Log | `fatal`, 4 lines | `error`, ~21 lines (message plus 20 backtrace frames) |
+
+The event count is unchanged, and the classification is arguably better: a
+tracker weighing `handled` and `severity` sees a handled warning instead of an
+unhandled error. The log line is the real cost — roughly five times longer per
+occurrence. Where a reserved exception is routine rather than exceptional (a
+client walking nonexistent ids), that volume adds up; registering the exception
+explicitly, as above, keeps it off the unhandled path altogether.
+
+**A custom `error_envelope` opts out of the default's verbosity gating**, so the
+example above puts it back. The built-in shape gates the message by environment
+on the unregistered path (`definition` is `nil`): an unhandled exception's
+message is written for logs and can carry SQL, record values or internal
+hostnames, so it only reaches local environments. A *registered* Trane error's
+message goes out everywhere, because registering the error is how a host
+curates it.
+
+An envelope written as the one-liner
+
+```ruby
+->(exception, definition) { { dsc: exception.message } }   # don't
+```
+
+drops that distinction and echoes an unhandled exception's message in
+production. Some hosts do want exactly that — reproducing a legacy contract
+that behaved the same way is a real reason — but it should be a decision, not
+the shape you inherited from an example.
+
+Referencing an autoloaded constant from these callables is fine, but pass a
+**lambda that delegates**, not a `Method` object: config initializers run before
+Rails sets up the autoloader, so `MyApp::Envelope.method(:error)` raises
+`NameError` at boot while `->(e, d) { MyApp::Envelope.error(e, d) }` resolves at
+call time.

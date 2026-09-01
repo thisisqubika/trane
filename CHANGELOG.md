@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-08-27
+
+### Added
+
+- `success_envelope` (set via `Trane.configure`): a callable applied to the
+  serialized response hash before encoding, so hosts can wrap every success
+  payload in their own envelope. Defaults to identity.
+- `error_envelope` (set via `Trane.configure`): a callable receiving
+  `(exception, definition)` — `definition` is `nil` when no error is
+  registered — that builds the error response body. The status code stays
+  derived from the definition. The default reproduces the previous
+  `{"errors":[{"key","message"}]}` shape, verbosity gating included.
+- `rescue_rails_reserved` (set via `Trane.configure`): when `true`,
+  Rails-reserved exceptions with no registered error are served through the
+  envelope instead of being re-raised, as a plain 500 — the reserved
+  exception's native status mapping (e.g. `ActiveRecord::RecordNotFound`'s
+  404) is discarded, not preserved. It also moves their reporting: Rails'
+  exception middleware no longer sees them, so Trane reports them instead, as
+  `handled: true` / `severity: :warning` rather than Rails' `handled: false` /
+  `severity: :error`, and with a longer log line. Same event count, more log
+  volume. Defaults to `false`.
+
+Both envelope callables must return a Hash, and Trane checks rather than
+encoding whatever comes back. A `success_envelope` that returns something else
+raises `Trane::Error`; an `error_envelope` that returns something else, or that
+raises, degrades to the built-in shape and logs a warning — it cannot raise,
+because it runs inside a `rescue_from` and would escape to Rails' static error
+page.
+
+No breaking changes: every default reproduces 0.1.0 behaviour exactly.
+
 ## [0.1.0] - 2026-08-14
 
 First public release.
@@ -33,4 +64,5 @@ First public release.
   metadata raises by default (`on_missing_operation` opt-out), and
   configuration setters reject unknown modes.
 
+[0.2.0]: https://github.com/thisisqubika/trane/releases/tag/v0.2.0
 [0.1.0]: https://github.com/thisisqubika/trane/releases/tag/v0.1.0
