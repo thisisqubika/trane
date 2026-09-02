@@ -24,7 +24,10 @@ Gem::Specification.new do |spec|
     "rubygems_mfa_required" => "true"
   }
 
-  spec.files = Dir["lib/**/*", "LICENSE.txt", "README.md", "CHANGELOG.md"]
+  # config/ carries the Engine's routes, which Rails loads by path at mount time.
+  # Without it the published gem mounts an Engine with no routes and the
+  # documentation endpoints answer 404 — see spec/trane/packaging_spec.rb.
+  spec.files = Dir["lib/**/*", "config/**/*", "LICENSE.txt", "README.md", "CHANGELOG.md"]
   spec.require_paths = [ "lib" ]
 
   spec.add_dependency "railties",      ">= 7.2", "< 9"

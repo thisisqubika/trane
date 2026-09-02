@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-09-01
+
+### Fixed
+
+- The gem now packages `config/routes.rb`. `spec.files` listed only `lib/` and
+  the three top-level documents, so the Engine's routes never shipped:
+  `mount Trane::Engine` gave an Engine with no routes and the documentation
+  endpoints answered **404** for anyone installing from rubygems.org. 0.1.0 and
+  0.2.0 are both affected — the bug is invisible to a host pinning the gem by
+  `git:`, which fetches the whole checkout, so it went unnoticed until a host
+  consumed the published gem. `spec/trane/packaging_spec.rb` now asserts the
+  packaged file list directly, since the rest of the suite runs against the
+  checkout and cannot see what the gemspec omits.
+
 ## [0.2.0] - 2026-08-27
 
 ### Added
@@ -64,5 +78,6 @@ First public release.
   metadata raises by default (`on_missing_operation` opt-out), and
   configuration setters reject unknown modes.
 
+[0.2.1]: https://github.com/thisisqubika/trane/releases/tag/v0.2.1
 [0.2.0]: https://github.com/thisisqubika/trane/releases/tag/v0.2.0
 [0.1.0]: https://github.com/thisisqubika/trane/releases/tag/v0.1.0
